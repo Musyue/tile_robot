@@ -1,0 +1,6 @@
+flags:
+  object_detect_id: 0
+  object_ibvs_id: 1
+  desire_detect_id: 0
+  desire_ibvs_id: 0
+

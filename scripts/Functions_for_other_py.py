@@ -2,13 +2,34 @@
 # -*- coding: utf-8 -*-
 import numpy
 import Quaternion as Q
+from ur5_kinematics import *
 """
-This code need three relating code:
+This code need four relating code:
 Quaternion.py
 transfer.py
 utlility.py
-"""
 
+"""
+def get_T_translation(T):
+    trans_x = T[3]
+    trans_y = T[7]
+    trans_z = T[11]
+    return [trans_x, trans_y, trans_z]
+def get_IK_from_T(ur0,T,q_last):
+    weights = [1.] * 6
+    return ur0.best_sol(weights,q_last,T)
+def insert_new_xy(T,nx,ny,nz):
+    temp=[]
+    for i in xrange(16):
+        if i==3:
+            temp.append(nx)
+        elif i==7:
+            temp.append(ny)
+        elif i==11:
+            temp.append(nz)
+        else:
+            temp.append(T[i])
+    return temp
 
 def getpi(listb):
     listcc = []

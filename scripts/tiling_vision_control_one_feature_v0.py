@@ -5,6 +5,7 @@ import numpy,math
 import Quaternion as Q
 import time
 from numpy import linalg
+
 import yaml
 import os
 from urdf_parser_py.urdf import URDF
@@ -12,13 +13,18 @@ from pykdl_utils.kdl_parser import kdl_tree_from_urdf_model
 from pykdl_utils.kdl_kinematics import KDLKinematics
 
 from ur5_planning.msg import uv
-from ur5_planning.msg import tileuv
+from tilling_robot.msg import tileuv
 from sensor_msgs.msg import JointState
 from ur5_pose_get import *
 from std_msgs.msg import UInt16,Float64
 
 from std_msgs.msg import String
 from Functions_for_other_py import *
+
+# from tilling_robot.msg import code_flags
+
+from code_flags_sub import *
+from std_msgs.msg import UInt8
 """
 os.system("rostopic pub io_state std_msgs/String "55C8010155" --once")
 """
@@ -41,15 +47,16 @@ class TilingVisionControl():
     def Init_node(self):
         rospy.init_node(self.nodename)
         # tile_reader = TileUvRead()
-        tileuv_sub = rospy.Subscriber("/tile_uv", tileuv, self.callback)
+        tileuv_sub = rospy.Subscriber("/tilling_robot/tile_uv", tileuv, self.callback)
         ur_pub = rospy.Publisher("/ur_driver/URScript", String, queue_size=10)
+
         return ur_pub
     """
     0:o
     1:d
     """
     def callback(self, msg):
-        if msg.tile_id == 0:
+        if msg.tile_id == 1:
             if len(self.tile_0_buf) == 10:
                 self.tile_0_buf = self.tile_0_buf[1:]
                 tile_id = msg.tile_id
@@ -153,10 +160,12 @@ class TilingVisionControl():
     def get_feature_error(self,desireuv,nowuv):
         kk=numpy.mat(nowuv).T-numpy.mat(desireuv).T
         return kk.reshape((1,2))
-
+    """   
     #cam speed (udot,vdot)(xdot,ydot,zdot,wxdot,wydot,wzdot)
     #get camera frame speed,you must change to ee frame
     #uvm means now uv
+    """
+
     def get_cam_vdot(self,uvm,z,desireuv,nowuv):
         J=self.vis2jac_mt1(uvm,z)
         JJ=numpy.linalg.pinv(J)
@@ -166,28 +175,6 @@ class TilingVisionControl():
 
     #samebody tranlasition to jacbian
     #joint speed (q0dot,q1dot,q2dot,q3dot,q4dot,q5dot)
-    # def get_joint_speed(self,uvm,z,desireuv,nowuv,q,info):
-    #     #1,get base to ee jacabian
-    #     Jacabian_joint,pose=self.get_jacabian_from_joint(self.urdfname,q)
-    #     # print ""
-    #     #2,get ee(AX=XB) to camera frame jacabian
-    #     X=self.Get_ur_X(info)#numpu array
-    #     #tr2jac
-    #     jac = tr2jac(X,1)
-    #     #print "------X",X
-    #     inv_X_jac = jac.I
-    #     #get ee speed
-    #     #print "tr2jac-----\n",jac
-    #     cam_speed = self.get_cam_vdot(uvm, z, desireuv, nowuv)
-    #     # print "cam_speed--------\n",cam_speed
-    #     ee_speed = numpy.dot(inv_X_jac, cam_speed)
-    #     # print "ee_speed-----before changing--------\n",ee_speed
-    #     v_list = ee_speed.reshape((1, 6)).tolist()[0]
-    #     flag_list = [0, 1, 1, 0, 0, 0]
-    #     vdot_z = [1.0 * v_list[i] * flag_list[i] for i in range(6)]
-    #     # print("ee_speed_after--------------\n",vdot_z)
-    #     j_speed=numpy.dot(Jacabian_joint.I,numpy.mat(vdot_z).T)
-    #     return j_speed
     def get_joint_speed(self,uvm,z,desireuv,nowuv,q,info):
         #1,get base to ee jacabian
         Jacabian_joint,T_06=self.get_jacabian_from_joint(self.urdfname,q)
@@ -227,7 +214,14 @@ class TilingVisionControl():
             listangular.append(detajoint.tolist()[i][0]+qnow[i])
         # print "list",detajoint.tolist()
         return listangular
-
+    def check_vison_error_is_zero(self,desireuv,nowuv,error):
+        feature_error=self.get_feature_error(desireuv,nowuv).reshape((1,2))
+        print "feature_error",feature_error.tolist()
+        if abs(feature_error.tolist()[0][0])<=error and abs(feature_error.tolist()[0][1])<=error:
+            return 1
+        else:
+            print "Need more time to go to object----------"
+            return 0
     def ibvs_run_ur5(self,uvm,z,q,info):
 
         """
@@ -265,17 +259,44 @@ class TilingVisionControl():
         Protocol="55C8010"+str(flag)+"55"
         Pub_str='rostopic pub io_state std_msgs/String '+Protocol+' --once'
         os.system(Pub_str)
+    """
+    Low power is valid
+    Before using this function,you must make sure,P13 is high.Led open
+    """
     def Open_sucking_close_Ardunio(self):
         Protocol="{}"
         Pub_str='rostopic pub /toggle_led std_msgs/Empty '+Protocol+' --once'
         os.system(Pub_str)
-
+    def move_sucker_to_tile(self,z_distance,tile_width,q_now):
+        Kine=Kinematic()
+        T = Kine.Forward(q_now)
+        # moveur(pub, qt,ace,vel,t)
+        print "Now T",numpy.array(T).reshape(4,4)
+        #z_distance=0.33
+        new_T = insert_new_xy(T, T[3], T[7], z_distance)  # 解算出来的是基于world的
+        q_new = get_IK_from_T(Kine, new_T, q_now).tolist()
+        return q_new
+    def move_ur_to_desire(self,x_distance,q_now):
+        Kine=Kinematic()
+        T = Kine.Forward(q_now)
+        # moveur(pub, qt,ace,vel,t)
+        print "Now T",numpy.array(T).reshape(4,4)
+        #z_distance=0.33
+        new_T = insert_new_xy(T, x_distance, T[7], T[11])  # 解算出来的是基于world的
+        q_new = get_IK_from_T(Kine, new_T, q_now).tolist()
+        return q_new
+    def change_angle_to_pi(self,qangle):
+        temp = []
+        for i in xrange(len(qangle)):
+            temp.append(qangle[i] / 180.0 * 3.14)
+        return temp
 def main():
     #uvlist=[123.0,112.0]
     uvlist=[]
     camf=624.0429 * 1e-03
-    # uvcentral=[316,251]
-    uvcentral = [338, 76]#sucking central
+    #316,251
+    uvcentral_place=[338,250]
+    uvcentral = [338, 99]#sucking central
     First_joint_angular=[]
     calibinfo=[
         0.109982645426,
@@ -289,11 +310,13 @@ def main():
     urdfname = "/data/ros/ur_ws_yue/src/tilling_robot/urdf/ur5.urdf"
     cailename = "/data/ros/ur_ws_yue/src/tilling_robot/yaml/cam_500_logitech.yaml"
     nodename="tilling_vision_control"
+    tile_width = 0.01 #m
     ace=50
     vel=0.1
     urt=0
     detat=0.05
     ratet=30
+    z_distance=0
     lamda=3.666666
     z=0.45
     ur_reader = Urposition()
@@ -304,8 +327,9 @@ def main():
     Those two flag use to make sucker sucking tile
     """
     object_flag=0
-    open_desire_flag= 0
+    open_vison_flag= 0
     desire_flag=0
+    turn_on_vision_flag=0
     """
     nodename,urdfname,delta,kappa,lamda,califilename,camf)
     """
@@ -316,28 +340,154 @@ def main():
 
     Object_joint_angular_vision_state=[]
     Object_joint_angular_sucking_state = [-68.91,-98.86,-81.19,-89.11,89.35,91.79]
-
+    Object_joint_angular_sucking_state_new= F0.change_angle_to_pi(Object_joint_angular_sucking_state)
     Desire_joint_angular_vision_state=[]
     Desire_joint_angular_place_state = [266.09, -178.29, 117.69, -121.76, -267.38, -216.20]
 
     print "First_joint_angular",First_joint_angular
+    count_for_tile=0
+    open_suking_flag=0
+    open_roation_flag=0
+    """
+    获取flag的状态，自定义消息类型有问题，不太好操作，暂时使用这种方式
+    """
+    code_flag_sub = Codeflags()
+    sub1 = rospy.Subscriber("/pick_place_tile_vision/object_ibvs_id", UInt8, code_flag_sub.callback_object_ibvs)
+    sub2 = rospy.Subscriber("/pick_place_tile_vision/object_detect_id", UInt8, code_flag_sub.callback_object_detect_id)
+    sub3 = rospy.Subscriber("/pick_place_tile_vision/desire_detect_id", UInt8, code_flag_sub.callback_desire_detect_id)
+    sub4 = rospy.Subscriber("/pick_place_tile_vision/desire_ibvs_id", UInt8, code_flag_sub.callback_desire_ibvs_id)
+    sub5 = rospy.Subscriber("/pick_place_tile_vision/open_ur_rotation_id", UInt8, code_flag_sub.callback_open_ur_rotation_id)
+
+
+    os.system("rostopic pub /pick_place_tile_vision/object_ibvs_id std_msgs/UInt8 '1' --once")
+    os.system("rostopic pub /pick_place_tile_vision/object_detect_id std_msgs/UInt8 '1' --once")
     while not rospy.is_shutdown():
         try:
             """
-            First,Go to object position,just need opreating tile 0,
+            1,通过object_ibvs_id控制视觉伺服
+            """
+            """
+            First,Go to object position,just need opreating tile 1,
             Now UV also is [316,251]
             """
             q_now = ur_reader.ave_ur_pose
             print "q_now",q_now
-            if len(q_now) != 0:
-                if len(F0.tile_0_buf)!=0:
-                    uvm = [uvcentral]
-                    q_pub_now=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo)
-                    MoveUrString=F0.Move_ur(q_pub_now, ace, vel, urt)
-                    ur_pub.publish(MoveUrString)
-                    print "F0.tile_0_buf",F0.tile_0_buf[-1]
+            if len(code_flag_sub.object_ibvs_id_buf) != 0:
+                if len(q_now) != 0 and code_flag_sub.object_ibvs_id_buf[-1]==1:
+                    if len(F0.tile_0_buf)!=0 and open_vison_flag ==0:
+                        uvm = [uvcentral]
+                        q_pub_now=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo)
+                        MoveUrString=F0.Move_ur(q_pub_now, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        feature_error_zero_flag=F0.check_vison_error_is_zero(F0.tile_0_buf[-1][1],uvcentral,2)
+                        """
+                        if error is zero ,we close vision servo
+                        """
+                        if feature_error_zero_flag:
+                            open_vison_flag =1
+                            open_suking_flag=1
+                        print "F0.tile_0_buf",F0.tile_0_buf[-1]
+                    if open_vison_flag ==1:
+                        """
+                        First,go to sucking tile
+                        """
+                        z_distance=0.18
+                        q_before_sucking=q_now
+                        q_new_pub=F0.move_sucker_to_tile(z_distance,tile_width,q_now)
+                        MoveUrString=F0.Move_ur(q_new_pub, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        time.sleep(3)
+                        """
+                        Second,Open air pump for sucking
+                        """
+                        if open_suking_flag==1:
+                            F0.Open_sucking_close_Ardunio()
+                        """
+                        Third,go back the same point
+                        """
+                        MoveUrString=F0.Move_ur(q_before_sucking, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        time.sleep(3)
+
+                        """
+                        Fourth,move ur to desire position.
+                        """
+                        print "Fourth,move ur to desire position"
+                        x_distance = 0.35
+                        q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
+                        MoveUrString=F0.Move_ur(q_new_pub, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        time.sleep(3)
+
+                        """
+                        close all flags
+                        """
+                        open_vison_flag=0
+                        os.system("rostopic pub /pick_place_tile_vision/object_ibvs_id std_msgs/UInt8 '0' --once")
+                        os.system("rostopic pub /pick_place_tile_vision/object_detect_id std_msgs/UInt8 '0' --once")
+                        os.system("rostopic pub /pick_place_tile_vision/desire_detect_id std_msgs/UInt8 '1' --once")
+                else:
+                    print "UR5 is Not Ok,Please check"
             else:
-                print "UR5 is Not Ok,Please check"
+                print "Need to open ibvs id----"
+            """
+            Second,Open Parallel vision and desire vison servo .
+            Now UV also is [316,251]
+            """
+            if len(code_flag_sub.desire_detect_id_buf) != 0:
+                if open_roation_flag==0:
+                    os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '1' --once")
+                    open_roation_flag=1
+                if len(F0.tile_0_buf) != 0 and len(code_flag_sub.desire_ibvs_id_buf)!=0:
+                    """
+                    First,go to desire position
+                    """
+                    if code_flag_sub.desire_ibvs_id_buf[-1]==1:
+                        uvm = [uvcentral_place]
+                        q_pub_now = F0.ibvs_run_ur5(uvm, z, q_now, calibinfo)
+                        MoveUrString = F0.Move_ur(q_pub_now, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        feature_error_zero_flag = F0.check_vison_error_is_zero(F0.tile_0_buf[-1][1], uvcentral_place, 2)
+                        """
+                        if error is zero ,we close vision servo
+                        """
+                        if feature_error_zero_flag:
+                            open_vison_flag = 1
+                            open_suking_flag = 1
+                        print "F0.tile_0_buf", F0.tile_0_buf[-1]
+                    if open_vison_flag ==1:
+                        """
+                        First,go to sucking tile
+                        """
+                        z_distance=0.15
+                        q_before_sucking=q_now
+                        q_new_pub=F0.move_sucker_to_tile(z_distance,tile_width,q_now)
+                        MoveUrString=F0.Move_ur(q_new_pub, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        time.sleep(5)
+                        """
+                        Second,Close air pump for sucking
+                        """
+                        if open_suking_flag==1:
+                            F0.Open_sucking_close_Ardunio()
+                        """
+                        Third,go back the sucking  point
+                        """
+                        MoveUrString=F0.Move_ur(Object_joint_angular_sucking_state_new, ace, vel, urt)
+                        ur_pub.publish(MoveUrString)
+                        time.sleep(3)
+
+                        """
+                        close all flags
+                        """
+                        open_vison_flag=0
+                        os.system(
+                            "rostopic pub /pick_place_tile_vision/desire_ibvs_id std_msgs/UInt8 '0' --once")
+                        # os.system("rostopic pub /pick_place_tile_vision/object_ibvs_id std_msgs/UInt8 '0' --once")
+                        # os.system("rostopic pub /pick_place_tile_vision/object_detect_id std_msgs/UInt8 '0' --once")
+                        os.system("rostopic pub /pick_place_tile_vision/desire_detect_id std_msgs/UInt8 '0' --once")
+            else:
+                print "Need to open desire_detect_id-----"
         except KeyboardInterrupt:
             sys.exit()
 

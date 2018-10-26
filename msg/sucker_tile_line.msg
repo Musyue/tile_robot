@@ -1,0 +1,5 @@
+uv sucker_tile_uv0
+uv sucker_tile_uv1
+float32 sucker_tile_slope
+float32 sucker_tile_intercept
+
