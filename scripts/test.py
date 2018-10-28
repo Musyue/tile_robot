@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
+import os,sys
+# o_path = os.getcwd()
+# # print o_path
+sys.path.append('..')
+from DemoScripts import tiling_vision_control_one_feature_demo_v0
 def Sort_tile_feature(approx):
     result = []
     new_approx = []

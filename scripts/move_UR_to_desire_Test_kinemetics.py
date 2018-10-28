@@ -42,12 +42,13 @@ while not rospy.is_shutdown():
     t=0
     vel=0.1
     ace=50
-    qq=[-94,-95.29,-90.44,-86.80,91.62,71.55]
+    qq=[-219.61,-82.61,-128.57,31.76,86.31,131]
+    # qqq=[-219.49,-107.56,-94.80,22.94,86.27,130.94]
     Kine=Kinematic()
     qt = change_angle_to_pi(qq)
     T=Kine.Forward(qt)
     # moveur(pub, qt,ace,vel,t)
-    new_T=insert_new_xy(T,T[3],T[7],0.28)#解算出来的是基于world的
+    new_T=insert_new_xy(T,0.35,-0.45,T[11])#解算出来的是基于world的
 
     print "T",numpy.array(T).reshape(4,4)
     print "New",numpy.array(new_T).reshape(4,4)
