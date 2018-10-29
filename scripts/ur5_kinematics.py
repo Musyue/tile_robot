@@ -436,7 +436,7 @@ class Kinematic:
             result_list.append([self.solve_2pi_pro(q_sols[j],q[0]),self.solve_2pi_pro(q_sols[j+1],q[1]),self.solve_2pi_pro(q_sols[j+2],q[2]),self.solve_2pi_pro(q_sols[j+3],q[3]),\
                     self.solve_2pi_pro(q_sols[j+4], q[4]),self.solve_2pi_pro(q_sols[j+5],q[5])])
             j += 6
-        print result_list
+        # print result_list
         return result_list
 
     def best_sol(self,weights,q_guess,T):
@@ -476,10 +476,10 @@ class Kinematic:
         if len(valid_sols) == 0:
             return None
         best_sol_ind = numpy.argmin(numpy.sum((weights * (valid_sols - numpy.array(q_guess))) ** 2, 1))
-        #print "#########################the best sol##################"
+        print "#########################the best sol##################"
         print valid_sols[best_sol_ind].tolist()
         #print best_sol_ind
-        #print sols[best_sol_ind]
+        print sols[best_sol_ind]
         return valid_sols[best_sol_ind].tolist()
 
 def main():
@@ -488,11 +488,12 @@ def main():
     q2=[-0.25277, -0.8561733333333333, 1.2195411111111112, -3.557096666666667, -1.3205444444444445, -1.1349355555555556]
     q3=[0,0,0,0,0,0]
     q4=[3.3985266666666667, -1.3765411111111112, -1.944881111111111, 0.14112555555555556, -4.9428833333333335, 5.663687777777778]
-    q5=[-3.337832919751303, -1.3066164175616664, -2.099621168767111, 0.2749959468841553, 1.0121572256088258, 0.7357035636901856]
+    q5=[-3.59860155164,-1.82648800883,-1.41735542252,0.0812199084238,1.27000134315,0.734254316924]
+    # q5=[-3.66249992472,-1.27642603705,-1.9559700595,0.0701396996895,1.3338858418,0.73287290524]
     c=Kinematic()
     c.display(q5,0,3)
     weights=[1.] * 6
-    c.best_sol(weights,q2,c.Forward(q2))
+    c.best_sol(weights,q5,c.Forward(q5))
     # c.best_sol_for_other_py(weights,q,c.Forward())
     # print type(c.Forward())
     #c.best_sol_new(c.Forward(q2))

@@ -20,12 +20,29 @@ class DetectTile:
 
     def __init__(self):
         # 创建cv_bridge，声明图像的发布者和订阅者
+        self.obj_buf=[]
+        self.desire_buf=[]
+        self.sucker_obj_sub=rospy.Subscriber("/tilling_robot/sucker_center_obj_uv", uv, self.callback_obj)
+        self.sucker_desire_sub = rospy.Subscriber("/tilling_robot/sucker_center_desire_uv", uv, self.callback_desire)
         self.image_pub = rospy.Publisher("cv_bridge_image", Image, queue_size=1)
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/usb_cam/image_raw", Image, self.callback)
         self.rgb_image=None
         self.tile_pub = rospy.Publisher("/tilling_robot/tile_uv", tileuv, queue_size=10)
         self.sucker_line_pub = rospy.Publisher("/tilling_robot/sucker_line_uv", sucker_tile_line, queue_size=10)
+    def callback_obj(self,data):
+        if len(self.obj_buf)==10:
+            self.obj_buf=self.obj_buf[1:]
+            self.obj_buf.append(data.uvinfo)
+        else:
+            self.obj_buf.append(data.uvinfo)
+            print "obj_buf",self.obj_buf
+    def callback_desire(self,data):
+        if len(self.desire_buf)==10:
+            self.desire_buf=self.desire_buf[1:]
+            self.desire_buf.append(data.uvinfo)
+        else:
+            self.desire_buf.append(data.uvinfo)
     def callback(self,data):
         try:
             video_capture=self.bridge.imgmsg_to_cv2(data,"bgr8")
@@ -363,14 +380,15 @@ class DetectTile:
                     # cv2.drawContours(rgb, [approx], -1, (20*count, 255, 0), -1, cv2.LINE_AA)
                     print "all info for tile------", resultuv
                     print "Now tile id",count
-                    tile_uv.tile_id = count
-                    tile_uv.obj_desire = obj_desire
-                    tile_uv.cen_uv.uvinfo = [cX, cY]
-                    tile_uv.f1th_uv.uvinfo = angular_point[0]
-                    tile_uv.s2th_uv.uvinfo = angular_point[1]
-                    tile_uv.t3th_uv.uvinfo = angular_point[2]
-                    tile_uv.f4th_uv.uvinfo = angular_point[3]
-                    self.tile_pub.publish(tile_uv)
+                    if count==1:
+                        tile_uv.tile_id = count
+                        tile_uv.obj_desire = obj_desire
+                        tile_uv.cen_uv.uvinfo = [cX, cY]
+                        tile_uv.f1th_uv.uvinfo = angular_point[0]
+                        tile_uv.s2th_uv.uvinfo = angular_point[1]
+                        tile_uv.t3th_uv.uvinfo = angular_point[2]
+                        tile_uv.f4th_uv.uvinfo = angular_point[3]
+                        self.tile_pub.publish(tile_uv)
 
                     latest_central = now_central
 
@@ -410,7 +428,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,3)
+            Y_smooth = self.apply_smoothing(Y_gray,1)
             Y_edges = self.detect_edges(Y_smooth)
             Y_kernel = cv2.getStructuringElement( cv2.MORPH_RECT, ( MORPH, MORPH ) )
             Y_closed = cv2.morphologyEx( Y_edges.copy(), cv2.MORPH_CLOSE, Y_kernel )
@@ -421,7 +439,17 @@ class DetectTile:
             else:
                 print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
-
+            cv2.circle(rgb, (316,251), 10, (20, 100, 220), -3)
+            cv2.putText(rgb, 'center', (316,251),
+                        cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.obj_buf)!=0:
+                cv2.circle(rgb, (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])), 10, (100, 100, 220), -3)
+                cv2.putText(rgb, 'oc', (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.desire_buf)!=0:
+                cv2.circle(rgb, (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])), 10, (200, 200, 220), -3)
+                cv2.putText(rgb, 'dc', (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             """
             HLS SPACE
             """
@@ -501,7 +529,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,15)
+            Y_smooth = self.apply_smoothing(Y_gray,1)
             Y_edges = self.detect_edges(Y_smooth)
             New_edges = Y_edges.copy()
 
@@ -584,14 +612,14 @@ def main():
         k=DetectTile()
 
 
-        rate = rospy.Rate(60)
+        rate = rospy.Rate(3)
         while not rospy.is_shutdown():
             try:
                 # print "code_flag_sub.object_detect_id_buf[-1]",code_flag_sub.object_detect_id_buf[-1]
                 k.process_rgb_object_image(k.rgb_image)
                 # cen=k.process_rgb_image(k.rgb_image)
                 # print "cenpixel\n",cen
-                time.sleep(1)
+                # time.sleep(1)
                 rate.sleep()
             except:
                 print "no sucking tile----"

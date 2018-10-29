@@ -363,7 +363,7 @@ class TilingVisionControl():
         id2=[uv0[0],uv0[1]-size]
         id3=[uv0[0]-size,uv0[1]-size]
         id4=[uv0[0]-size,uv0[1]]
-        id5=[uv0[0]-size/2-5,uv0[1]+size/2-5]
+        id5=[uv0[0]-size,uv0[1]+size]
         # return [id1,id2,id3,id4,id5]
         return [id1, id4, id5,id2, id3]
 def main():
@@ -424,9 +424,9 @@ def main():
     Desire_joint_angular_place_state_new = F0.change_angle_to_pi(Desire_joint_angular_place_state)
     print "First_joint_angular",First_joint_angular
 
-    tile_2=[-217.59,-105.73,-89.85,22.94,88.92,45.29]
+    tile_2=[-216.24,-105.93,-88.34,21.07,86.30,42.29]
     tile_2_new=F0.change_angle_to_pi(tile_2)
-    tile_3=[-217.92,-104.96,-82.53,16.9,88.92,45.27]
+    tile_3=[-212.39,-102.54,-81.26,5.91,77.85,42.29]
     tile_3_new=F0.change_angle_to_pi(tile_3)
 
     count_for_tile=0
@@ -533,7 +533,6 @@ def main():
                     desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(2)
                     print "xpp=F0.tile_0_buf[-1][1]",F0.tile_0_buf[-1][1]
                     print "desire_tile_path_cacu[tile_nums]",desire_tile_path_cacu[tile_nums]
-                    print "desire_tile_path_cacu----->>>>>", desire_tile_path_cacu
                     # time.sleep(1)
                     q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
                     MoveUrString_1=F0.Move_ur(q_pub_now_d, ace, vel, urt)

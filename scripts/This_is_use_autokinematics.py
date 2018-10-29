@@ -208,7 +208,7 @@ class TilingVisionControl():
     def get_feature_error(self,desireuv,nowuv):
         kk=numpy.mat(nowuv).T-numpy.mat(desireuv).T
         return kk.reshape((1,2))
-    """
+    """   
     #cam speed (udot,vdot)(xdot,ydot,zdot,wxdot,wydot,wzdot)
     #get camera frame speed,you must change to ee frame
     #uvm means now uv
@@ -356,14 +356,13 @@ class TilingVisionControl():
     """
     uv0,初始状态下的uv,level,螺旋贴砖的层次
     """
-    def Caculate_desire_uv_for_place(self,level):
-        size=110
-        uv0=self.tile_0_buf[-1][1]
+    def Caculate_desire_uv_for_place(self,uv0,level):
+        size=10
         id1=uv0
         id2=[uv0[0],uv0[1]-size]
         id3=[uv0[0]-size,uv0[1]-size]
         id4=[uv0[0]-size,uv0[1]]
-        id5=[uv0[0]-size/2-5,uv0[1]+size/2-5]
+        id5=[uv0[0]-size,uv0[1]+size]
         # return [id1,id2,id3,id4,id5]
         return [id1, id4, id5,id2, id3]
 def main():
@@ -373,7 +372,7 @@ def main():
     #316,251
     # uvcentral_place=[316,251]
     uvcentral_place=[320,201]
-    uvcentral = [370,105]#sucking central109-125OK,370,201
+    uvcentral = [370,105]#sucking central109-125
     First_joint_angular=[]
     calibinfo=[
         0.109982645426,
@@ -423,12 +422,6 @@ def main():
     Desire_joint_angular_place_state = [-219.61,-82.61,-128.57,31.76,86.31,42.58]
     Desire_joint_angular_place_state_new = F0.change_angle_to_pi(Desire_joint_angular_place_state)
     print "First_joint_angular",First_joint_angular
-
-    tile_2=[-217.59,-105.73,-89.85,22.94,88.92,45.29]
-    tile_2_new=F0.change_angle_to_pi(tile_2)
-    tile_3=[-217.92,-104.96,-82.53,16.9,88.92,45.27]
-    tile_3_new=F0.change_angle_to_pi(tile_3)
-
     count_for_tile=0
     open_suking_flag=0
     open_roation_flag=0
@@ -524,18 +517,17 @@ def main():
                 if len(F0.tile_0_buf) != 0 and open_vison_flag_desire == 1:
                 # if len(F0.tile_0_buf)!=0 and open_vison_flag_desire ==1:
 
-                    uvmm = [uvcentral_place]
+                    uvm = [uvcentral_place]
                     print "第三步，打开目标空间的视觉伺服程序"
                     print "-------目标空间贴第"+str(tile_nums)+"块砖-----"
                     xpp=F0.tile_0_buf[-1][1]
 
                     uv0=xpp
-                    desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(2)
+                    desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(uv0,2)
                     print "xpp=F0.tile_0_buf[-1][1]",F0.tile_0_buf[-1][1]
                     print "desire_tile_path_cacu[tile_nums]",desire_tile_path_cacu[tile_nums]
-                    print "desire_tile_path_cacu----->>>>>", desire_tile_path_cacu
                     # time.sleep(1)
-                    q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
+                    q_pub_now_d=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
                     MoveUrString_1=F0.Move_ur(q_pub_now_d, ace, vel, urt)
                     ur_pub.publish(MoveUrString_1)
                     feature_error_zero_flag_d=F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],uvcentral_place,3)
@@ -563,24 +555,19 @@ def main():
                     if (tile_nums-1)==0:#1
                         x_distance = 0.46
                         y_distcane= -0.375
-                        q_new_pub_d = F0.move_ur_to_desire_vertical(x_distance, y_distcane, q_before_sucking_d)
-                        q_after_sucking_d = q_new_pub_d
-                        MoveUrString = F0.Move_ur(q_new_pub_d, ace, vel, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(6)
                     elif (tile_nums-1)==1:#2
-                        # x_distance = 0.38
-                        # y_distcane= -0.42
-                        MoveUrString = F0.Move_ur(tile_2_new, ace, 0.2, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(3)
+                        x_distance = 0.38
+                        y_distcane= -0.42
                     elif (tile_nums-1)==2:
-                        # x_distance = 0.29
-                        # y_distcane= -0.355
-                        MoveUrString = F0.Move_ur(tile_3_new, ace, 0.2, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(3)
+                        x_distance = 0.29
+                        y_distcane= -0.355
 
+                    q_new_pub_d = F0.move_ur_to_desire_vertical(x_distance, y_distcane,q_before_sucking_d)
+                    q_after_sucking_d = q_new_pub_d
+                    MoveUrString = F0.Move_ur(q_new_pub_d, ace, vel, urt)
+                    ur_pub.publish(MoveUrString)
+
+                    time.sleep(6)
                     # q_before_sucking_d = []
                     """
                     Second,close air pump for sucking
