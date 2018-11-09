@@ -208,7 +208,7 @@ class TilingVisionControl():
     def get_feature_error(self,desireuv,nowuv):
         kk=numpy.mat(nowuv).T-numpy.mat(desireuv).T
         return kk.reshape((1,2))
-    """
+    """   
     #cam speed (udot,vdot)(xdot,ydot,zdot,wxdot,wydot,wzdot)
     #get camera frame speed,you must change to ee frame
     #uvm means now uv
@@ -356,35 +356,23 @@ class TilingVisionControl():
     """
     uv0,初始状态下的uv,level,螺旋贴砖的层次
     """
-    def Caculate_desire_uv_for_place(self,level):
+    def Caculate_desire_uv_for_place(self,uv0,level):
         size=100
-        uv0=self.tile_0_buf[-1][1]
         id1=uv0
         id2=[uv0[0],uv0[1]-size]
         id3=[uv0[0]-size,uv0[1]-size]
-        id4=[uv0[0]-size+39,uv0[1]-18]
-        id5=[uv0[0]-size+30,uv0[1]+size-36]
+        id4=[uv0[0]-size,uv0[1]]
+        id5=[uv0[0]-size,uv0[1]+size]
         # return [id1,id2,id3,id4,id5]
-        return [id1, id4, id5,id2, id3]
-    """
-    基于joint q做旋转,末端做90度旋转,rotation angular
-    """
-    def Rotaion_tool_90(self,q_now,angular):
-        q_new=[]
-        for i in xrange(len(q_now)):
-            if i ==5:
-                q_new.append(q_now[i]+(angular*math.pi/180))
-            else:
-                q_new.append(q_now[i])
-        return q_new
+        return [id1, id4, id4,id2, id3]
 def main():
     #uvlist=[123.0,112.0]
     uvlist=[]
     camf=624.0429 * 1e-03
     #316,251
     # uvcentral_place=[316,251]
-    uvcentral_place=[323,174]#320,201#180
-    uvcentral = [339,120]#sucking central109-125OK,370,201#368,95#120
+    uvcentral_place=[320,190]#320,201
+    uvcentral = [370,105]#sucking central109-125
     First_joint_angular=[]
     calibinfo=[
         0.109982645426,
@@ -428,17 +416,18 @@ def main():
     First_joint_angular = ur_reader.ave_ur_pose
 
     Object_joint_angular_vision_state=[]
-    Object_joint_angular_sucking_state = [-58.85,-90.39,-88.02,-91.27,90.11,69.44]#66.02
+    Object_joint_angular_sucking_state = [-110.18,-93.16,-92.82,-84.93,86.68,66.02]#66.02
     Object_joint_angular_sucking_state_new= F0.change_angle_to_pi(Object_joint_angular_sucking_state)
     Desire_joint_angular_vision_state=[]
-    Desire_joint_angular_place_state = [-175.78,-86.61,-120.25,29.08,87.00,43.05]
+    Desire_joint_angular_place_state = -175.78, -86.61, -120.25, 29.08, 87.00, -46.05#[-175.78,-86.61,-120.25,29.08,87.00,43.05]
     Desire_joint_angular_place_state_new = F0.change_angle_to_pi(Desire_joint_angular_place_state)
     print "First_joint_angular",First_joint_angular
 
-    # tile_2=[-217.59,-105.73,-89.85,22.94,88.92,45.29]
+    # tile_2=[-208.99,-103.68,-88.34,16.07,71.30,42.29]
     # tile_2_new=F0.change_angle_to_pi(tile_2)
-    # tile_3=[-217.92,-104.96,-82.53,16.9,88.92,45.27]
+    # tile_3=[-212.39,-102.54,-81.26,5.91,77.85,42.29]
     # tile_3_new=F0.change_angle_to_pi(tile_3)
+
 
     count_for_tile=0
     open_suking_flag=0
@@ -467,109 +456,89 @@ def main():
             q_now = ur_reader.ave_ur_pose
             print "q_now",q_now
             if len(q_now) != 0:
-                if len(F0.tile_0_buf)!=0 and open_vison_flag ==0:
-                    print "Go to object position--------------"
-                    uvm = [uvcentral]
-                    xp=F0.tile_0_buf[-1][1]#目标位置
-                    q_pub_now=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo,xp)
-                    MoveUrString=F0.Move_ur(q_pub_now, ace, vel, urt)
-                    ur_pub.publish(MoveUrString)
-                    time.sleep(0.05)
-                    feature_error_zero_flag=F0.check_vison_error_is_zero(F0.tile_0_buf[-1][1],uvcentral,5)
-                    """
-                    if error is zero ,we close vision servo
-                    """
-                    if feature_error_zero_flag:
-                        open_vison_flag =1
-                        open_suking_flag=1
-                    print "F0.tile_0_buf",F0.tile_0_buf[-1]
-                """
-                第二步，关闭视觉伺服，打开轨迹规划，并吸瓷砖
-                """
-                if open_vison_flag ==1 and open_suking_flag==1:
-                    """
-                    First,go to sucking tile
-                    """
-                    print "-------------First,go to sucking tile------------"
-                    z_distance=0.13
-                    q_before_sucking=q_now
-                    q_new_pub=F0.move_sucker_to_tile(z_distance,tile_width,q_now)
-                    MoveUrString=F0.Move_ur(q_new_pub, ace, 0.2, urt)
-                    ur_pub.publish(MoveUrString)
-                    time.sleep(1.5)
-                    """
-                    Second,Open air pump for sucking
-                    """
-                    if open_suking_flag==1:
-                        F0.Open_sucking_close_Ardunio()
-                        """
-                        Third,go back the same point
-                        """
-                        print "-------Third,go back the same point---------"
-                        MoveUrString=F0.Move_ur(q_before_sucking, ace, 0.2, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(1)
-                    open_move_to_desire_flag=1
-                if open_move_to_desire_flag==1:
-                    """
-                    Fourth,move ur to desire position.
-                    """
-                    print "------Fourth,move ur to desire position--------"
-                    if tile_nums==5:
-                        new_temp_q=F0.Rotaion_tool_90(Desire_joint_angular_place_state_new,-90)
-                        MoveUrString=F0.Move_ur(new_temp_q, ace, 0.3, urt)
-                        ur_pub.publish(MoveUrString)
-                        open_vison_flag = 1
-                        open_suking_flag = 0
-                        open_move_to_desire_flag=0
-                        open_vison_flag_desire=1
-                        F0.tile_0_buf=[]
-                        time.sleep(6)
-                    else:
-                        # x_distance = 0.35
-                        # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
-                        MoveUrString=F0.Move_ur(Desire_joint_angular_place_state_new, ace, 0.3, urt)
-                        ur_pub.publish(MoveUrString)
-                        open_vison_flag = 1
-                        open_suking_flag = 0
-                        open_move_to_desire_flag=0
-                        open_vison_flag_desire=1
-                        F0.tile_0_buf=[]
-                        time.sleep(6)
-
-                    """
-                    close all flags
-                    """
+                # if len(F0.tile_0_buf)!=0 and open_vison_flag ==0:
+                #     print "Go to object position--------------"
+                #     uvm = [uvcentral]
+                #     xp=F0.tile_0_buf[-1][1]#目标位置
+                #     q_pub_now=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo,xp)
+                #     MoveUrString=F0.Move_ur(q_pub_now, ace, vel, urt)
+                #     ur_pub.publish(MoveUrString)
+                #     time.sleep(0.05)
+                #     feature_error_zero_flag=F0.check_vison_error_is_zero(F0.tile_0_buf[-1][1],uvcentral,5)
+                #     """
+                #     if error is zero ,we close vision servo
+                #     """
+                #     if feature_error_zero_flag:
+                #         open_vison_flag =1
+                #         open_suking_flag=1
+                #     print "F0.tile_0_buf",F0.tile_0_buf[-1]
+                # """
+                # 第二步，关闭视觉伺服，打开轨迹规划，并吸瓷砖
+                # """
+                # if open_vison_flag ==1 and open_suking_flag==1:
+                #     """
+                #     First,go to sucking tile
+                #     """
+                #     print "-------------First,go to sucking tile------------"
+                #     z_distance=0.13
+                #     q_before_sucking=q_now
+                #     q_new_pub=F0.move_sucker_to_tile(z_distance,tile_width,q_now)
+                #     MoveUrString=F0.Move_ur(q_new_pub, ace, 0.2, urt)
+                #     ur_pub.publish(MoveUrString)
+                #     time.sleep(1.5)
+                #     """
+                #     Second,Open air pump for sucking
+                #     """
+                #     if open_suking_flag==1:
+                #         F0.Open_sucking_close_Ardunio()
+                #         """
+                #         Third,go back the same point
+                #         """
+                #         print "-------Third,go back the same point---------"
+                #         MoveUrString=F0.Move_ur(q_before_sucking, ace, 0.2, urt)
+                #         ur_pub.publish(MoveUrString)
+                #         time.sleep(1)
+                #     open_move_to_desire_flag=1
+                # if open_move_to_desire_flag==1:
+                #     """
+                #     Fourth,move ur to desire position.
+                #     """
+                #     print "------Fourth,move ur to desire position--------"
+                #     # x_distance = 0.35
+                #     # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
+                #     MoveUrString=F0.Move_ur(Desire_joint_angular_place_state_new, ace, 0.3, urt)
+                #     ur_pub.publish(MoveUrString)
+                #     open_vison_flag = 1
+                #     open_suking_flag = 0
+                #     open_move_to_desire_flag=0
+                #     open_vison_flag_desire=1
+                #     F0.tile_0_buf=[]
+                #     time.sleep(4)
+                #
+                #     """
+                #     close all flags
+                #     """
                 """
                 第三步，打开目标空间的视觉伺服程序
                 """
-                if len(F0.tile_0_buf) != 0 and open_vison_flag_desire == 1:
+                if len(F0.tile_0_buf) != 0 and open_vison_flag_desire == 0:
                 # if len(F0.tile_0_buf)!=0 and open_vison_flag_desire ==1:
-                    uvcentral_place_2 = [316,251]
-                    uvm2=[uvcentral_place_2]
-                    uvmm = [uvcentral_place]
+
+                    uvm = [uvcentral_place]
                     print "第三步，打开目标空间的视觉伺服程序"
                     print "-------目标空间贴第"+str(tile_nums)+"块砖-----"
                     xpp=F0.tile_0_buf[-1][1]
 
                     uv0=xpp
-                    desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(2)
+                    desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(uv0,2)
                     print "xpp=F0.tile_0_buf[-1][1]",F0.tile_0_buf[-1][1]
+                    print "desire_tile_path_cacu----------->>>>>>>", desire_tile_path_cacu
                     print "desire_tile_path_cacu[tile_nums]",desire_tile_path_cacu[tile_nums]
-                    print "desire_tile_path_cacu----->>>>>", desire_tile_path_cacu
                     # time.sleep(1)
-                    if tile_nums < 3:
-                        q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
-                        MoveUrString_1=F0.Move_ur(q_pub_now_d, ace, vel, urt)
-                        ur_pub.publish(MoveUrString_1)
-                        feature_error_zero_flag_d = F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],
-                                                                                 uvcentral_place, 3)
-                    # elif tile_nums == 2:
-                    #     q_pub_now_d = F0.ibvs_run_ur5(uvm2, z, q_now, calibinfo, desire_tile_path_cacu[tile_nums])
-                    #     MoveUrString_1 = F0.Move_ur(q_pub_now_d, ace, vel, urt)
-                    #     ur_pub.publish(MoveUrString_1)
-                    #     feature_error_zero_flag_d = F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],
-                    #                                                              uvcentral_place_2, 3)
+                    q_pub_now_d=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
+                    MoveUrString_1=F0.Move_ur(q_pub_now_d, ace, vel, urt)
+                    ur_pub.publish(MoveUrString_1)
+                    feature_error_zero_flag_d=F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],uvcentral_place,3)
                     """
                     if error is zero ,we close vision servo
                     """
@@ -590,61 +559,63 @@ def main():
                     """
                     print "第四步，关闭视觉伺服，打开轨迹规划，并释放瓷砖"
                     q_before_sucking_d = q_now
+                    time.sleep(1)
+                    print "q_before_sucking_d = q_now",q_before_sucking_d
                     print "tile_nums------>>>>>>>",tile_nums
-                    x_distance = 0.65
-
-                    # if (tile_nums-1)<3:
-
-                    q_new_pub_d = F0.move_ur_to_desire(x_distance, q_before_sucking_d)
-                    q_after_sucking_d = q_new_pub_d
-                    MoveUrString = F0.Move_ur(q_new_pub_d, 0.2, vel, urt)
-                    ur_pub.publish(MoveUrString)
-                    time.sleep(6)
-                    # if (tile_nums-1)==2:
-                    #     # x_distance = 0.29
+                    x_distance = 0.55
+                    # if (tile_nums-1)==0:#1
+                    #     x_distance = 0.65
+                    #     # y_distcane= -0.315
+                    #
+                    # elif (tile_nums-1)==1:#2
+                    #     x_distance = 0.38
+                    #     # y_distcane= -0.42
+                    #
+                    # elif (tile_nums-1)==2:
+                    #     x_distance = 0.29
                     #     # y_distcane= -0.355
-                    #     new_q_temp=F0.Rotaion_tool_90(q_after_sucking_d,-90)
-                    #     q_new_pub_d = F0.move_ur_to_desire(x_distance, new_q_temp)
-                    #     q_after_sucking_d = q_new_pub_d
-                    #     MoveUrString = F0.Move_ur(q_new_pub_d, 0.2, vel, urt)
-                    #     ur_pub.publish(MoveUrString)
-                    #     time.sleep(6)
 
                     # q_before_sucking_d = []
+                    q_new_pub_d = F0.move_ur_to_desire(x_distance,  q_before_sucking_d)
+                    q_after_sucking_d = q_new_pub_d
+                    MoveUrString = F0.Move_ur(q_new_pub_d, 0.15, vel, urt)
+                    ur_pub.publish(MoveUrString)
+                    time.sleep(6)
                     """
                     Second,close air pump for sucking
                     """
                     if open_suking_flag_desire==1:
-                        F0.Open_sucking_close_Ardunio()
+                        # F0.Open_sucking_close_Ardunio()
                         open_suking_flag_desire=0
                         """
                         Third,go back the same point
                         """
-                        MoveUrString=F0.Move_ur(q_before_sucking_d, ace, 0.2, urt)
+                        MoveUrString=F0.Move_ur(Desire_joint_angular_place_state_new, ace, 0.2, urt)
                         ur_pub.publish(MoveUrString)
-                        time.sleep(1)
+                        time.sleep(4)
+                        open_vison_flag_desire=0
                     open_move_to_object_flag=1
-                if open_move_to_object_flag==1:
-                    """
-                    Fourth,move ur to desire position.
-                    """
-                    print "#########Desire,--Fourth,move ur to object position-------"
-                    # x_distance = 0.35
-                    # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
-                    MoveUrString_2=F0.Move_ur(Object_joint_angular_sucking_state_new, ace, 0.3, urt)
-                    ur_pub.publish(MoveUrString_2)
-                    open_vison_flag = 0
-                    open_suking_flag = 0
-                    open_move_to_desire_flag=0
-                    open_vison_flag_desire=0
-                    open_move_to_object_flag=0
-                    F0.tile_0_buf=[]
-                    q_now=[]
-                    time.sleep(7)
-
-                    """
-                    close all flags
-                    """
+                # if open_move_to_object_flag==1:
+                #     """
+                #     Fourth,move ur to desire position.
+                #     """
+                #     print "#########Desire,--Fourth,move ur to object position-------"
+                #     # x_distance = 0.35
+                #     # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
+                #     MoveUrString_2=F0.Move_ur(Object_joint_angular_sucking_state_new, ace, 0.3, urt)
+                #     ur_pub.publish(MoveUrString_2)
+                #     open_vison_flag = 0
+                #     open_suking_flag = 0
+                #     open_move_to_desire_flag=0
+                #     open_vison_flag_desire=0
+                #     open_move_to_object_flag=0
+                #     F0.tile_0_buf=[]
+                #     q_now=[]
+                #     time.sleep(7)
+                #
+                #     """
+                #     close all flags
+                #     """
                 if tile_nums >= 3:
                     tile_nums = 0
 

@@ -46,7 +46,27 @@ def From_matrix_to_list(data):
     return result
 def Get_X_from_cali_quaternion(calibinfo):
     transition_L = numpy.array(calibinfo[:3]).T
-    # print transition_L
+    print transition_L.T
+    rot = calibinfo[3:6]
+    s = calibinfo[6]
+    q0 = Q.quaternion(s, numpy.mat(rot))
+    # print "q02R--------\n", q0.r()
+    # print q0.r()
+    T_part1 = numpy.column_stack((q0.r(), transition_L))
+    # print T_part1
+    T_part2 = numpy.array([0, 0, 0, 1])
+    # print T_part2
+    T = numpy.row_stack((T_part1, T_part2))
+    # print T
+    T = T.tolist()
+    T = T[0] + T[1] + T[2] + T[3]
+    # print("T:" , T)
+    return T
+def Get_X_from_cali_quaternion_new(calibinfo):
+    transition_L = numpy.array(calibinfo[:3]).T
+    print transition_L.T.tolist()
+    transition_L=numpy.array(transition_L.T.tolist()[::-1])
+    print "transition_L",transition_L
     rot = calibinfo[3:6]
     s = calibinfo[6]
     q0 = Q.quaternion(s, numpy.mat(rot))

@@ -103,12 +103,12 @@ class DetectTile:
     def select_yellow(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
-        lower = np.uint8([10, 0, 20])
-        upper = np.uint8([40, 255, 255])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([255, 255, 255])
         white_mask = cv2.inRange(converted, lower, upper)
         #yellow color mask
-        lower = np.uint8([10, 0, 20])
-        upper = np.uint8([40, 255, 255])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([255, 255, 255])
         yellow_mask = cv2.inRange(converted, lower, upper)
         # combine the mask
         mask = cv2.bitwise_or(white_mask, yellow_mask)
@@ -336,8 +336,7 @@ class DetectTile:
             approx = cv2.approxPolyDP(cont, 0.1 * arc_len, True)
             # print "cv2.contourArea(cont)",cv2.contourArea(cont)
             # print "approx",len(np.array(approx).reshape(-1,2))
-            if cv2.contourArea(cont) > 8000 and cv2.contourArea(cont) < 20000:
-            # if cv2.contourArea(cont) > 5000 and cv2.contourArea(cont) < 10000:
+            if cv2.contourArea(cont) > 3000 and cv2.contourArea(cont) < 8000:
             # if cv2.contourArea(cont) > 3000:
                 if (len(approx) == 4):
                     IS_FOUND = 1
@@ -440,15 +439,15 @@ class DetectTile:
             else:
                 print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
-            cv2.circle(rgb, (316,251), 10, (20, 100, 220), -3)
+            cv2.circle(rgb, (316,251), 10, (20, 100, 220), -2)
             cv2.putText(rgb, 'center', (316,251),
                         cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             if len(self.obj_buf)!=0:
-                cv2.circle(rgb, (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])), 10, (100, 100, 220), -3)
+                cv2.circle(rgb, (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])), 10, (100, 100, 220), -2)
                 cv2.putText(rgb, 'oc', (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])),
                             cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             if len(self.desire_buf)!=0:
-                cv2.circle(rgb, (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])), 10, (200, 200, 220), -3)
+                cv2.circle(rgb, (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])), 10, (200, 200, 220), -2)
                 cv2.putText(rgb, 'dc', (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])),
                             cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             """

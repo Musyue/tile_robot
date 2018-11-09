@@ -799,8 +799,8 @@ def main():
                         q_before_sucking_d=all_pub_q[tile_nums]
                         q_new_pub_d = F0.move_ur_to_desire(x_distance, all_pub_q[tile_nums])
                         MoveUrString = F0.Move_ur(q_new_pub_d, 0.2, vel, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(5)
+                        # ur_pub.publish(MoveUrString)
+                        # time.sleep(5)/
                         open_suking_flag_desire=1
                         count_time_line=0
                         tile_nums += 1
@@ -814,8 +814,8 @@ def main():
                         Third,go back the same point
                         """
                         MoveUrString = F0.Move_ur(q_before_sucking_d, ace, 0.2, urt)
-                        ur_pub.publish(MoveUrString)
-                        time.sleep(1)
+                        # ur_pub.publish(MoveUrString)
+                        # time.sleep(1)
                         open_move_to_object_flag = 1
                     if open_move_to_object_flag == 1:
                         """
@@ -831,7 +831,7 @@ def main():
                         open_vison_flag_desire = 0
                         open_move_to_object_flag = 0
                         open_suking_flag_desire = 0
-                        time.sleep(7)
+                        # time.sleep(7)
             #
             #         # if (tile_nums-1)<3:
             #
