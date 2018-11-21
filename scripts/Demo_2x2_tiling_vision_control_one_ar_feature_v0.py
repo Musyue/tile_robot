@@ -577,8 +577,10 @@ def main():
     cailename = "/data/ros/ur_ws_yue/src/tilling_robot/yaml/cam_500_logitech.yaml"
     nodename="tilling_vision_control"
     tile_width = 0.01 #m
-    ace=50
-    vel=0.1
+    # ace=50
+    # vel=0.1
+    ace=1.4
+    vel=1.05
     urt=0
     detat=0.05
     ratet=15
@@ -831,7 +833,7 @@ def main():
                         open_vison_flag_desire = 0
                         open_move_to_object_flag = 0
                         open_suking_flag_desire = 0
-                        # time.sleep(7)
+                        time.sleep(7)
             #
             #         # if (tile_nums-1)<3:
             #

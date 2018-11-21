@@ -302,14 +302,7 @@ class TilingVisionControl():
             q_pub_now[3]) + "," + str(q_pub_now[4]) + "," + str(q_pub_now[5]) + "]," + "a=" + str(
             ace) + "," + "v=" + str(
             vel) + "," + "t=" + str(urt) + ")"
-        print "movej",ss
-        return ss
-    def Movel_ur(self,q_pub_now,ace,vel,urt):
-        ss = "movel([" + str(q_pub_now[0]) + "," + str(q_pub_now[1]) + "," + str(q_pub_now[2]) + "," + str(
-            q_pub_now[3]) + "," + str(q_pub_now[4]) + "," + str(q_pub_now[5]) + "]," + "a=" + str(
-            ace) + "," + "v=" + str(
-            vel) + "," + "t=" + str(urt) + ")"
-        print "movel",ss
+        print "ss",ss
         return ss
     def Open_sucking_close_IoBoard(self,flag):
         Protocol="55C8010"+str(flag)+"55"
@@ -391,7 +384,7 @@ def main():
     #316,251
     # uvcentral_place=[316,251]
     uvcentral_place=[323,174]#320,201#180
-    uvcentral = [339,120]#sucking central109-125OK,370,201#368,95#120
+    uvcentral = [330,120]#sucking central109-125OK,370,201#368,95#120
     First_joint_angular=[]
     calibinfo=[
         0.109982645426,
@@ -406,14 +399,16 @@ def main():
     cailename = "/data/ros/ur_ws_yue/src/tilling_robot/yaml/cam_500_logitech.yaml"
     nodename="tilling_vision_control"
     tile_width = 0.01 #m
-    ace=50
-    vel=0.1
+    ace_ibvs=50
+    vel_ibvs=0.1
+    ace=1.4
+    vel=1.05
     urt=0
     detat=0.05
     ratet=30
     z_distance=0
     lamda=3.666666
-    # lamda = 7.066666
+    # lamda = 1000.066666
     z=0.45
     ur_reader = Urposition()
     ur_sub = rospy.Subscriber("/joint_states", JointState, ur_reader.callback)
@@ -435,7 +430,7 @@ def main():
     First_joint_angular = ur_reader.ave_ur_pose
 
     Object_joint_angular_vision_state=[]
-    Object_joint_angular_sucking_state = [-58.85,-90.39,-88.02,-91.27,90.11,69.44]#66.02
+    Object_joint_angular_sucking_state = [-58.85,-90.39,-88.02,-94.70,85.45,69.44]#66.02
     Object_joint_angular_sucking_state_new= F0.change_angle_to_pi(Object_joint_angular_sucking_state)
     Desire_joint_angular_vision_state=[]
     Desire_joint_angular_place_state = [-175.78,-86.61,-120.25,29.08,87.00,43.05]
@@ -479,7 +474,7 @@ def main():
                     uvm = [uvcentral]
                     xp=F0.tile_0_buf[-1][1]#目标位置
                     q_pub_now=F0.ibvs_run_ur5(uvm,z,q_now,calibinfo,xp)
-                    MoveUrString=F0.Move_ur(q_pub_now, ace, vel, urt)
+                    MoveUrString=F0.Move_ur(q_pub_now, ace_ibvs, vel_ibvs, urt)
                     ur_pub.publish(MoveUrString)
                     time.sleep(0.05)
                     feature_error_zero_flag=F0.check_vison_error_is_zero(F0.tile_0_buf[-1][1],uvcentral,5)
@@ -501,7 +496,7 @@ def main():
                     z_distance=0.13
                     q_before_sucking=q_now
                     q_new_pub=F0.move_sucker_to_tile(z_distance,tile_width,q_now)
-                    MoveUrString=F0.Move_ur(q_new_pub, ace, 0.2, urt)
+                    MoveUrString=F0.Move_ur(q_new_pub, ace, vel, urt)
                     ur_pub.publish(MoveUrString)
                     time.sleep(1.5)
                     """
@@ -513,9 +508,9 @@ def main():
                         Third,go back the same point
                         """
                         print "-------Third,go back the same point---------"
-                        MoveUrString=F0.Move_ur(q_before_sucking, ace, 0.2, urt)
+                        MoveUrString=F0.Move_ur(q_before_sucking, ace, vel, urt)
                         ur_pub.publish(MoveUrString)
-                        time.sleep(1)
+                        time.sleep(1.5)
                     open_move_to_desire_flag=1
                 if open_move_to_desire_flag==1:
                     """
@@ -524,25 +519,25 @@ def main():
                     print "------Fourth,move ur to desire position--------"
                     if tile_nums==5:
                         new_temp_q=F0.Rotaion_tool_90(Desire_joint_angular_place_state_new,-90)
-                        MoveUrString=F0.Move_ur(new_temp_q, ace, 0.3, urt)
+                        MoveUrString=F0.Move_ur(new_temp_q, ace, vel, urt)
                         ur_pub.publish(MoveUrString)
                         open_vison_flag = 1
                         open_suking_flag = 0
                         open_move_to_desire_flag=0
                         open_vison_flag_desire=1
                         F0.tile_0_buf=[]
-                        time.sleep(6)
+                        time.sleep(3)
                     else:
                         # x_distance = 0.35
                         # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
-                        MoveUrString=F0.Move_ur(Desire_joint_angular_place_state_new, ace, 0.3, urt)
+                        MoveUrString=F0.Move_ur(Desire_joint_angular_place_state_new, ace, vel, urt)
                         ur_pub.publish(MoveUrString)
                         open_vison_flag = 1
                         open_suking_flag = 0
                         open_move_to_desire_flag=0
                         open_vison_flag_desire=1
                         F0.tile_0_buf=[]
-                        time.sleep(6)
+                        time.sleep(3)
 
                     """
                     close all flags
@@ -567,7 +562,7 @@ def main():
                     # time.sleep(1)
                     if tile_nums < 3:
                         q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
-                        MoveUrString_1=F0.Move_ur(q_pub_now_d, ace, vel, urt)
+                        MoveUrString_1=F0.Move_ur(q_pub_now_d, ace_ibvs, vel_ibvs, urt)
                         ur_pub.publish(MoveUrString_1)
                         feature_error_zero_flag_d = F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],
                                                                                  uvcentral_place, 3)
@@ -604,9 +599,9 @@ def main():
 
                     q_new_pub_d = F0.move_ur_to_desire(x_distance, q_before_sucking_d)
                     q_after_sucking_d = q_new_pub_d
-                    MoveUrString = F0.Move_ur(q_new_pub_d, 0.2, vel, urt)
+                    MoveUrString = F0.Move_ur(q_new_pub_d, ace, vel, urt)
                     ur_pub.publish(MoveUrString)
-                    time.sleep(6)
+                    time.sleep(1.5)
                     # if (tile_nums-1)==2:
                     #     # x_distance = 0.29
                     #     # y_distcane= -0.355
@@ -627,7 +622,7 @@ def main():
                         """
                         Third,go back the same point
                         """
-                        MoveUrString=F0.Move_ur(q_before_sucking_d, ace, 0.2, urt)
+                        MoveUrString=F0.Move_ur(q_before_sucking_d, ace, vel, urt)
                         ur_pub.publish(MoveUrString)
                         time.sleep(1)
                     open_move_to_object_flag=1
@@ -638,7 +633,7 @@ def main():
                     print "#########Desire,--Fourth,move ur to object position-------"
                     # x_distance = 0.35
                     # q_new_pub=F0.move_ur_to_desire(x_distance,q_now)
-                    MoveUrString_2=F0.Move_ur(Object_joint_angular_sucking_state_new, ace, 0.3, urt)
+                    MoveUrString_2=F0.Move_ur(Object_joint_angular_sucking_state_new, ace, vel, urt)
                     ur_pub.publish(MoveUrString_2)
                     open_vison_flag = 0
                     open_suking_flag = 0
@@ -647,7 +642,7 @@ def main():
                     open_move_to_object_flag=0
                     F0.tile_0_buf=[]
                     q_now=[]
-                    time.sleep(7)
+                    time.sleep(4)
 
                     """
                     close all flags

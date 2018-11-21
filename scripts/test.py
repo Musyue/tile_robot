@@ -1,9 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os,sys,math
+import time
+import rospy
+from std_msgs.msg import Int32
+def main():
+    rospy.init_node("topic_publisher")
+    pub=rospy.Publisher("count",Int32)
+    count=0
+    rate=rospy.Rate(2)
+    while not rospy.is_shutdown():
+        print "before publish-----"
+        pub.publish(count)
+        count+=1
+        print "count",count
+        time.sleep(2)
+        print "after publish-----"
+        rate.sleep()
+if __name__=="__main__":
+    main()
+
 # o_path = os.getcwd()
 # # print o_path
-sys.path.append('..')
+# sys.path.append('..')
 # from DemoScripts import tiling_vision_control_one_feature_demo_v0
 # def Sort_tile_feature(approx):
 #     result = []
@@ -26,14 +45,14 @@ sys.path.append('..')
 # 2,add 2x2 demo
 # approx=[[[342, 191]], [[415, 194]], [[406, 277]], [[334, 274]]]
 # Sort_tile_feature(approx)
-q=[-3.06638444444,-1.51086333333,-2.09769444444,0.507284444444,1.51766666667,0.750983333333]
-def Rotaion_tool_90(q_now,angular):
-    q_new=[]
-    for i in xrange(len(q_now)):
-        if i ==5:
-            q_new.append(q_now[i]+(angular*math.pi/180))
-        else:
-            q_new.append(q_now[i])
-    return q_new
-print "niubi",Rotaion_tool_90(q,-90)
-# os.system("bash /data/ros/ur_ws_yue/src/tilling_robot/scripts/first_run.sh")
+# q=[-3.06638444444,-1.51086333333,-2.09769444444,0.507284444444,1.51766666667,0.750983333333]
+# def Rotaion_tool_90(q_now,angular):
+#     q_new=[]
+#     for i in xrange(len(q_now)):
+#         if i ==5:
+#             q_new.append(q_now[i]+(angular*math.pi/180))
+#         else:
+#             q_new.append(q_now[i])
+#     return q_new
+# print "niubi",Rotaion_tool_90(q,-90)
+# # os.system("bash /data/ros/ur_ws_yue/src/tilling_robot/scripts/first_run.sh")

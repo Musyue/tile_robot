@@ -86,11 +86,11 @@ class DetectTile:
     def select_yellow(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
-        lower = np.uint8([10, 0, 20])
+        lower = np.uint8([10, 0, 40])
         upper = np.uint8([40, 255, 255])
         white_mask = cv2.inRange(converted, lower, upper)
         #yellow color mask
-        lower = np.uint8([10, 0, 20])
+        lower = np.uint8([10, 0, 40])
         upper = np.uint8([40, 255, 255])
         yellow_mask = cv2.inRange(converted, lower, upper)
         # combine the mask
@@ -319,7 +319,7 @@ class DetectTile:
             approx = cv2.approxPolyDP(cont, 0.1 * arc_len, True)
             # print "cv2.contourArea(cont)",cv2.contourArea(cont)
             # print "approx",len(np.array(approx).reshape(-1,2))
-            if cv2.contourArea(cont) > 9000 and cv2.contourArea(cont) < 20000:
+            if cv2.contourArea(cont) > 5000 and cv2.contourArea(cont) < 20000:
             # if cv2.contourArea(cont) > 3000:
                 if (len(approx) == 4):
                     IS_FOUND = 1
@@ -339,6 +339,7 @@ class DetectTile:
                     # print approx.tolist()
                     angular_point = []
                     new_approx=self.Sort_tile_feature(approx)
+                    print "new_approx",new_approx
                     for i in range(len(new_approx)):
                         if i == 0:
                             cv2.circle(rgb, (new_approx[i][0], new_approx[i][1]), 5, (20, 60, 220), -1)
@@ -362,6 +363,7 @@ class DetectTile:
                     cv2.drawContours(rgb, [approx], -1, (0, 255, 255), 3)
                     # cv2.drawContours(rgb, [approx], -1, (20*count, 255, 0), -1, cv2.LINE_AA)
                     print "all info for tile------", resultuv
+                    cv2.line(rgb, ((angular_point[0][0]+angular_point[1][0])/2,(angular_point[0][1]+angular_point[1][1])/2), (cX,cY), (255,0,0), 3)
                     print "Now tile id",count
                     tile_uv.tile_id = count
                     tile_uv.obj_desire = obj_desire
@@ -410,7 +412,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,1)
+            Y_smooth = self.apply_smoothing(Y_gray,15)
             Y_edges = self.detect_edges(Y_smooth)
             Y_kernel = cv2.getStructuringElement( cv2.MORPH_RECT, ( MORPH, MORPH ) )
             Y_closed = cv2.morphologyEx( Y_edges.copy(), cv2.MORPH_CLOSE, Y_kernel )

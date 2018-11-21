@@ -87,22 +87,58 @@ class MoveURToolParalleTile():
                 x4=self.tile_uv_buf[-1][1][0]
                 y4=self.tile_uv_buf[-1][1][1]
                 if (x1-x2)!=0:
-                    k1=0.1*(y3-y4)/(x3-x4)
-                    intercept1=y4-k1*x4
-                    return (k1,intercept1)
+                    if x3-x4 !=0:
+                        k1=0.1*(y3-y4)/(x3-x4)
+                        intercept1=y4-k1*x4
+                        return (k1,intercept1)
+                    else:
+                        k1=0
+                        intercept1=y4
+                        return (k1, intercept1)
                 else:
                     pass
     def compare_slop_with_sucker_tile(self,tile_id):
         place_tile=self.caculate_tile_slop_intercept(tile_id)
+        error_size=0.099
         try:
             if len(self.sucker_tile_buf)!=0:
                 sucker_tile=self.sucker_tile_buf[-1][2]
                 print "place_tile[0]-sucker_tile[0]", place_tile[0] - sucker_tile[0]
-                # if abs(abs(place_tile[0])-abs(sucker_tile[0]))<=0.009:
-                if abs((place_tile[0]) - (sucker_tile[0])) <= 0.0099:
+                print "place_tile[0]",place_tile[0]
+                print "sucker_tile[0]",sucker_tile[0]
+                if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
                     return 1
                 else:
                     return 0
+                # if place_tile[0]>0 and sucker_tile[0]>0:
+                #     if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
+                #         return 1
+                #     else:
+                #         return 0
+                # elif place_tile[0]>0 and sucker_tile[0]<0:
+                #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
+                #         return 1
+                #     else:
+                #         return 0
+                # elif place_tile[0]<0 and sucker_tile[0]>0:
+                #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
+                #         return 1
+                #     else:
+                #         return 0
+                # elif place_tile[0]<0 and sucker_tile[0]<0:
+                #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
+                #         return 1
+                #     else:
+                #         return 0
+                # elif place_tile[0]==0 and sucker_tile[0]==0:
+                #     return 1
+                # elif (place_tile[0]==0 and sucker_tile[0]!=0) or (place_tile[0]!=0 and sucker_tile[0]==0):
+                #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
+                #         return 1
+                #     else:
+                #         return 0
+                # else:
+                #     pass
         except:
             print "No slop"
     def judge_slop_with_sucker_tile_symbol(self,tile_id):
@@ -152,8 +188,8 @@ def main():
     ur_reader = Urposition()
     ur_sub = rospy.Subscriber("/joint_states", JointState, ur_reader.callback)
     q_now_new = T.change_angle_to_pi(q_now_start)
-    step_size=0.2
-    rate = rospy.Rate(1)
+    step_size=0
+    rate = rospy.Rate(30)
     close_roation_flag=0
     code_flag_sub = Codeflags()
     sub = rospy.Subscriber("/pick_place_tile_vision/open_ur_rotation_id", UInt8, code_flag_sub.callback_open_ur_rotation_id)
@@ -164,7 +200,8 @@ def main():
         print "q_now_new", q_now_new
         if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
             if code_flag_sub.open_ur_rotation_id_buf[-1]==1:
-                if (q_now_new[5]+step_size)<6.28:
+                if (q_now_new[5]+step_size)<0.95:
+                    print "q_now_new[5]",q_now_new[5]
                     if len(T.tile_uv_buf)!=0 and len(T.sucker_tile_buf)!=0:
                         # print "T.tile_uv_buf",T.tile_uv_buf
                         try:
@@ -180,24 +217,24 @@ def main():
                             else:
                                 if close_roation_flag==0:
                                     if T.judge_slop_with_sucker_tile_symbol(1):#异号
-                                        pub_q=T.Just_move_tool_link(-1,q_now_new,step_size)#rad,approxmate 6度
+                                        pub_q=T.Just_move_tool_link(1,q_now_new,step_size)#rad,approxmate 6度
                                         print "The different symbol"
                                         # print "q_now_new",q_now_new
                                         # print "pub_q",pub_q
                                         T.moveur(pub,pub_q,ace,vel,t)
                                         # temp_q=pub_q
                                     else:#同号
-                                        pub_q = T.Just_move_tool_link(1, q_now_new, step_size)  # rad,approxmate 6度
+                                        pub_q = T.Just_move_tool_link(-1, q_now_new, step_size)  # rad,approxmate 6度
                                         print "The same symbol"
                                         # print "q_now_new",q_now_new
                                         # print "pub_q",pub_q
                                         T.moveur(pub, pub_q, ace, vel, t)
                                         # temp_q = pub_q
-                                    step_size+=0.1
+                                    step_size+=0.05
                         except:
                             print "error"
                 else:
-                    step_size=0.1
+                    step_size=0
             else:
                 close_roation_flag = 0
                 print "Please wait other process sequence---"
