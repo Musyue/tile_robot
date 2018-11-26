@@ -15,10 +15,16 @@ from tilling_robot.msg import code_flags
 from tilling_robot.msg import sucker_tile_line
 from code_flags_sub import *
 from std_msgs.msg import UInt8
-
+""""
+v4 sovles tile number random problem
+"""
 class DetectTile:
 
     def __init__(self):
+        self.obj_buf = []
+        self.desire_buf = []
+        self.sucker_obj_sub = rospy.Subscriber("/tilling_robot/sucker_center_obj_uv", uv, self.callback_obj)
+        self.sucker_desire_sub = rospy.Subscriber("/tilling_robot/sucker_center_desire_uv", uv, self.callback_desire)
         # 创建cv_bridge，声明图像的发布者和订阅者
         self.image_pub = rospy.Publisher("cv_bridge_image", Image, queue_size=1)
         self.bridge = CvBridge()
@@ -32,7 +38,21 @@ class DetectTile:
             self.rgb_image = video_capture.copy()
         except CvBridgeError as e:
             print e
+    def callback_obj(self,data):
+        if len(self.obj_buf)==10:
+            self.obj_buf=self.obj_buf[1:]
+            self.obj_buf.append(data.uvinfo)
+        else:
+            self.obj_buf.append(data.uvinfo)
+            print "obj_buf",self.obj_buf
+    def callback_desire(self,data):
+        if len(self.desire_buf)==10:
+            self.desire_buf=self.desire_buf[1:]
+            self.desire_buf.append(data.uvinfo)
+        else:
+            self.desire_buf.append(data.uvinfo)
     def convert_hsv(self,image):
+        # bgr=image[...,::-1]
         return cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
     def convert_hls(self,image):
@@ -41,8 +61,8 @@ class DetectTile:
     # image is expected be in RGB color space
     def select_rgb_white_yellow(self,image):
         # white color mask
-        lower = np.uint8([200, 200, 200])
-        upper = np.uint8([255, 255, 255])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([65, 255, 40])
         white_mask = cv2.inRange(image, lower, upper)
         # yellow color mask
         lower = np.uint8([190, 190, 0])
@@ -83,15 +103,34 @@ class DetectTile:
         # combine the mask
         mask = cv2.bitwise_or(white_mask, yellow_mask)
         return cv2.bitwise_and(image, image, mask=mask)
+    def select_yellow_1(self,image):
+        # converted = self.convert_hls(image)
+        converted = self.convert_hsv(image)#RGB
+        # lower = np.uint8([0, 0, 0])
+        # upper = np.uint8([255, 132, 38])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        white_mask = cv2.inRange(converted, lower, upper)
+        #yellow color mask
+        # lower = np.uint8([0, 0, 0])
+        # upper = np.uint8([50, 50, 100])
+        # lower = np.uint8([0, 0, 0])
+        # upper = np.uint8([255, 132, 38])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        yellow_mask = cv2.inRange(converted, lower, upper)
+        # combine the mask
+        mask = cv2.bitwise_or(white_mask, yellow_mask)
+        return cv2.bitwise_and(image, image, mask=mask)
     def select_yellow(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
-        lower = np.uint8([10, 0, 40])
-        upper = np.uint8([40, 255, 255])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([255, 255, 255])
         white_mask = cv2.inRange(converted, lower, upper)
         #yellow color mask
-        lower = np.uint8([10, 0, 40])
-        upper = np.uint8([40, 255, 255])
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([255, 255, 255])
         yellow_mask = cv2.inRange(converted, lower, upper)
         # combine the mask
         mask = cv2.bitwise_or(white_mask, yellow_mask)
@@ -267,17 +306,68 @@ class DetectTile:
         result = []
         new_approx = []
         for i in approx:
-            new_approx.append(i[0])
+            new_approx.append(i[0][0])
+        new_approx=list(set(new_approx))#distinct
         # print new_approx
-        temp = []
-        for i in new_approx:
-            temp.append(i[0])
-        temp.sort(reverse=True)
-        for i in temp:  # 升序排列
-            for ii in new_approx:
-                if ii[0] == i:
-                    result.append(ii)
+        # temp = []
+        # for i in new_approx:
+        #     temp.append(i[0])
+        new_approx.sort(reverse=True)
+        for i in new_approx:  # 升序排列
+            for ii in approx:
+                if ii[0][0] == i:
+                    result.append(ii[0])
+        # print result
         return result
+
+    def Sort_tile_mass_num(self,resultuv):
+        tempxy = []
+        tempy = []
+        resultmp = []
+        lastresult = []
+        tmp = []
+        newreslutuv = []
+        # print resultuv
+        for i in range(len(resultuv)):
+            if resultuv[i][0][0] == i + 1:
+                newreslutuv.append(resultuv[i])
+        for i in newreslutuv:
+            # if i[0][0]
+            tmp.append(i[1])
+        tempxy = sorted(tmp, reverse=True, key=lambda k: [k[1], k[0]])
+        print tempxy
+        for i in tempxy:
+            for ii in newreslutuv:
+                if i[0] == ii[1][0] and i[1] == ii[1][1]:
+                    resultmp.append(ii)
+        for i in range(len(resultmp)):
+            woqu = (resultmp[i][1:])
+            # print "woqutype",type(woqu)
+            woqu.insert(0, [i + 1])
+            # print woqu
+            lastresult.append(woqu)
+
+        # for i in resultuv:
+        #     tempx.append(i[1][0])
+        # print 'b',tempx
+        # tempx = list(set(tempx))
+        # print 'a',tempx
+        # tempx.sort(reverse=True)
+        # for j in tempx:  # 升序排列
+        #     for ii in resultuv:
+        #         if ii[1][0] == j:
+        #             resultx.append(ii)
+        #
+        # for i in resultx:
+        #     tempy.append(i[1][1])
+        # tempy.sort(reverse=True)
+        # tempy = list(set(tempy))
+        # for j in tempy:  # 升序排列
+        #     for ii in resultx:
+        #         if ii[1][1] == j:
+        #             lastresult.append(ii)
+        # print tempx
+        return lastresult
     def Draw_triangle(self,contours,rgb,obj_desire):
         ##################
         DELAY = 0.02
@@ -306,8 +396,9 @@ class DetectTile:
 
         pts_dst = np.array( corners, np.float32 )
         latest_central=(0,0)
+        resultuv = []
         for cont in contours:
-            resultuv = []
+
             """
             #1,num,2,centeral point 3,for angular point uv ,4,clockwise direction
             #caculating Area for tile selected just one tile
@@ -319,9 +410,10 @@ class DetectTile:
             approx = cv2.approxPolyDP(cont, 0.1 * arc_len, True)
             # print "cv2.contourArea(cont)",cv2.contourArea(cont)
             # print "approx",len(np.array(approx).reshape(-1,2))
-            if cv2.contourArea(cont) > 5000 and cv2.contourArea(cont) < 20000:
+            if cv2.contourArea(cont) > 3000 and cv2.contourArea(cont) < 7000:
             # if cv2.contourArea(cont) > 3000:
                 if (len(approx) == 4):
+                    # print "a"
                     IS_FOUND = 1
                     M = cv2.moments(cont)
                     # 获取图像质心坐标
@@ -330,16 +422,19 @@ class DetectTile:
                     now_central = (cX, cY)
                     if self.Judge_isnot_same_tile(latest_central, now_central) != 1:
                         count += 1
-                    cv2.putText(rgb, str(count), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-                    print "CX,CY", [cX, cY]
+                    # cv2.putText(rgb, str(count), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                    # print "CX,CY", [cX, cY]
                     central_list.append([cX, cY])
                     pts_src = np.array(approx, np.float32)
                     # print "pts_src", pts_src
                     cv2.circle(rgb, (cX, cY), 5, (0, 0, 0), -1)
                     # print approx.tolist()
                     angular_point = []
-                    new_approx=self.Sort_tile_feature(approx)
-                    print "new_approx",new_approx
+                    # print "approx", approx.tolist()
+                    new_approx=self.Sort_tile_feature(approx.tolist())
+                    # new_approx=approx
+
+                    # print "new_approx",new_approx
                     for i in range(len(new_approx)):
                         if i == 0:
                             cv2.circle(rgb, (new_approx[i][0], new_approx[i][1]), 5, (20, 60, 220), -1)
@@ -364,15 +459,16 @@ class DetectTile:
                     # cv2.drawContours(rgb, [approx], -1, (20*count, 255, 0), -1, cv2.LINE_AA)
                     print "all info for tile------", resultuv
                     cv2.line(rgb, ((angular_point[0][0]+angular_point[1][0])/2,(angular_point[0][1]+angular_point[1][1])/2), (cX,cY), (255,0,0), 3)
-                    print "Now tile id",count
-                    tile_uv.tile_id = count
-                    tile_uv.obj_desire = obj_desire
-                    tile_uv.cen_uv.uvinfo = [cX, cY]
-                    tile_uv.f1th_uv.uvinfo = angular_point[0]
-                    tile_uv.s2th_uv.uvinfo = angular_point[1]
-                    tile_uv.t3th_uv.uvinfo = angular_point[2]
-                    tile_uv.f4th_uv.uvinfo = angular_point[3]
-                    self.tile_pub.publish(tile_uv)
+                    # print "Now tile id",count
+                    # if count == 1:
+                    #     tile_uv.tile_id = count
+                    #     tile_uv.obj_desire = obj_desire
+                    #     tile_uv.cen_uv.uvinfo = [cX, cY]
+                    #     tile_uv.f1th_uv.uvinfo = angular_point[0]
+                    #     tile_uv.s2th_uv.uvinfo = angular_point[1]
+                    #     tile_uv.t3th_uv.uvinfo = angular_point[2]
+                    #     tile_uv.f4th_uv.uvinfo = angular_point[3]
+                    #     self.tile_pub.publish(tile_uv)
 
                     latest_central = now_central
 
@@ -380,9 +476,26 @@ class DetectTile:
                     pass
                 # count += 1
                 # cnt += 11
-        return rgb.copy()
-    def draw_line(self):
-        pass
+        # return rgb.copy()
+        return resultuv,rgb.copy()
+    def draw_triangle_numbers(self,contours,rgb,obj_desire):
+        uvuv=uv()
+        tile_uv=tileuv()
+        alltile_uvlist,newrgb=self.Draw_triangle(contours,rgb,obj_desire)
+        newtileuv=self.Sort_tile_mass_num(alltile_uvlist)
+        for i in newtileuv:
+            # print "i",i
+            cv2.putText(newrgb, str(i[0][0]), (i[1][0], i[1][1]), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+            tile_uv.tile_id = i[0][0]
+            tile_uv.obj_desire = obj_desire
+            tile_uv.cen_uv.uvinfo = [i[1][0], i[1][1]]
+            tile_uv.f1th_uv.uvinfo = i[2][0]
+            tile_uv.s2th_uv.uvinfo = i[2][1]
+            tile_uv.t3th_uv.uvinfo = i[2][2]
+            tile_uv.f4th_uv.uvinfo = i[2][3]
+            self.tile_pub.publish(tile_uv)
+        return newrgb.copy()
+
     def pub_empty_uv_info(self,tile_id,obj_desire):
         uvuv=uv()
         tile_uv=tileuv()
@@ -409,21 +522,31 @@ class DetectTile:
             tile_id=1,fixed point id
             obj_desire="o" object
             """
-            YHLS=self.select_yellow(rgb)
+            YHLS=self.select_yellow_1(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,15)
+            Y_smooth = self.apply_smoothing(Y_gray,3)
             Y_edges = self.detect_edges(Y_smooth)
             Y_kernel = cv2.getStructuringElement( cv2.MORPH_RECT, ( MORPH, MORPH ) )
             Y_closed = cv2.morphologyEx( Y_edges.copy(), cv2.MORPH_CLOSE, Y_kernel )
             _,Y_contours, Y_h = cv2.findContours( Y_closed.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE )
             # print "Y_h",Y_h,Y_contours
             if len(Y_contours)!=0:
-                rgb = self.Draw_triangle(Y_contours, rgb,'o')
+                rgb = self.draw_triangle_numbers(Y_contours, rgb,'o')
             else:
                 print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
-
+            cv2.circle(rgb, (316,251), 10, (20, 100, 220), -2)
+            cv2.putText(rgb, 'center', (316,251),
+                        cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.obj_buf)!=0:
+                cv2.circle(rgb, (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])), 10, (100, 100, 220), -2)
+                cv2.putText(rgb, 'oc', (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.desire_buf)!=0:
+                cv2.circle(rgb, (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])), 10, (200, 200, 220), -2)
+                cv2.putText(rgb, 'dc', (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             """
             HLS SPACE
             """
@@ -478,11 +601,11 @@ class DetectTile:
         row 行
         """
         bottom_left_cols1 = 0.33
-        bottom_left_rows1 = 0.30
+        bottom_left_rows1 = 0.15
         top_left_cols1 = 0.33
         top_left_rows1 = 0.08
         bottom_right_cols1 = 0.75
-        bottom_right_rows1 = 0.30
+        bottom_right_rows1 = 0.15
         top_right_cols1 = 0.75
         top_right_rows1 = 0.08
         sucker_line_uv = sucker_tile_line()
@@ -500,10 +623,10 @@ class DetectTile:
             tile_id=1,fixed point id
             obj_desire="o" object
             """
-            YHLS=self.select_yellow(rgb)
+            YHLS=self.select_yellow_1(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,15)
+            Y_smooth = self.apply_smoothing(Y_gray,1)
             Y_edges = self.detect_edges(Y_smooth)
             New_edges = Y_edges.copy()
 
@@ -513,10 +636,21 @@ class DetectTile:
             _,Y_contours, Y_h = cv2.findContours( Y_closed.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE )
             # print "Y_h",Y_h,Y_contours
             if len(Y_contours)!=0:
-                rgb = self.Draw_triangle(Y_contours, rgb,'o')
+                rgb = self.draw_triangle_numbers(Y_contours, rgb,'o')
             else:
                 print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
+            cv2.circle(rgb, (316,251), 10, (20, 100, 220), -2)
+            cv2.putText(rgb, 'center', (316,251),
+                        cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.obj_buf)!=0:
+                cv2.circle(rgb, (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])), 10, (100, 100, 220), -2)
+                cv2.putText(rgb, 'oc', (int(self.obj_buf[-1][0]), int(self.obj_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
+            if len(self.desire_buf)!=0:
+                cv2.circle(rgb, (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])), 10, (200, 200, 220), -2)
+                cv2.putText(rgb, 'dc', (int(self.desire_buf[-1][0]), int(self.desire_buf[-1][1])),
+                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 0), 1)
             """
             bottom_left_cols1=0.53
             bottom_left_rows1=0.70
@@ -596,7 +730,7 @@ def main():
         3,Use for two features IBVS
         """
         flag_data = code_flags()
-        rate = rospy.Rate(60)
+        rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             try:
                 if len(code_flag_sub.object_detect_id_buf)!=0:

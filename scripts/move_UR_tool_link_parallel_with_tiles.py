@@ -37,19 +37,20 @@ class MoveURToolParalleTile():
 
 
     def callback_tile(self,msg):
-        tile_id = msg.tile_id
-        cen_uv = msg.cen_uv.uvinfo
-        f1th_uv = msg.f1th_uv.uvinfo
-        s2th_uv = msg.s2th_uv.uvinfo
-        t3th_uv = msg.t3th_uv.uvinfo
-        f4th_uv = msg.f4th_uv.uvinfo
-        # print "f1th_uv",f1th_uv
-        # print "s2th_uv", s2th_uv
-        if len(self.tile_uv_buf) == 10:
-            self.tile_uv_buf = self.tile_uv_buf[1:]
-            self.tile_uv_buf.append([tile_id, cen_uv, f1th_uv, s2th_uv, t3th_uv, f4th_uv])
-        else:
-            self.tile_uv_buf.append([tile_id, cen_uv, f1th_uv, s2th_uv, t3th_uv, f4th_uv])
+        if msg.tile_id==1:
+            tile_id = msg.tile_id
+            cen_uv = msg.cen_uv.uvinfo
+            f1th_uv = msg.f1th_uv.uvinfo
+            s2th_uv = msg.s2th_uv.uvinfo
+            t3th_uv = msg.t3th_uv.uvinfo
+            f4th_uv = msg.f4th_uv.uvinfo
+            # print "f1th_uv",f1th_uv
+            # print "s2th_uv", s2th_uv
+            if len(self.tile_uv_buf) == 10:
+                self.tile_uv_buf = self.tile_uv_buf[1:]
+                self.tile_uv_buf.append([tile_id, cen_uv, f1th_uv, s2th_uv, t3th_uv, f4th_uv])
+            else:
+                self.tile_uv_buf.append([tile_id, cen_uv, f1th_uv, s2th_uv, t3th_uv, f4th_uv])
 
     def change_angle_to_pi(self,qangle):
         temp = []
@@ -99,7 +100,7 @@ class MoveURToolParalleTile():
                     pass
     def compare_slop_with_sucker_tile(self,tile_id):
         place_tile=self.caculate_tile_slop_intercept(tile_id)
-        error_size=0.099
+        error_size=0.016#0.099
         try:
             if len(self.sucker_tile_buf)!=0:
                 sucker_tile=self.sucker_tile_buf[-1][2]
@@ -179,8 +180,10 @@ class MoveURToolParalleTile():
 
 def main():
     t = 0
-    vel = 0.1
-    ace = 50
+    # vel = 0.1
+    # ace = 50
+    vel = 1.4
+    ace = 1.05
     q_now_start=[-110.25,-124.55,-46.95,-96.37,87.76,0.07]
 
     T=MoveURToolParalleTile()
@@ -189,7 +192,7 @@ def main():
     ur_sub = rospy.Subscriber("/joint_states", JointState, ur_reader.callback)
     q_now_new = T.change_angle_to_pi(q_now_start)
     step_size=0
-    rate = rospy.Rate(30)
+    rate = rospy.Rate(10)
     close_roation_flag=0
     code_flag_sub = Codeflags()
     sub = rospy.Subscriber("/pick_place_tile_vision/open_ur_rotation_id", UInt8, code_flag_sub.callback_open_ur_rotation_id)
@@ -200,7 +203,7 @@ def main():
         print "q_now_new", q_now_new
         if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
             if code_flag_sub.open_ur_rotation_id_buf[-1]==1:
-                if (q_now_new[5]+step_size)<0.95:
+                if (q_now_new[5]+step_size)<0.99:#0.95
                     print "q_now_new[5]",q_now_new[5]
                     if len(T.tile_uv_buf)!=0 and len(T.sucker_tile_buf)!=0:
                         # print "T.tile_uv_buf",T.tile_uv_buf
@@ -211,8 +214,8 @@ def main():
                                 os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '0' --once")
                                 T.moveur(pub, q_now_new, ace, 0.3, t)
                                 ##open second vision
-                                os.system(
-                                    "rostopic pub /pick_place_tile_vision/desire_ibvs_id std_msgs/UInt8 '1' --once")
+                                # os.system(
+                                #     "rostopic pub /pick_place_tile_vision/desire_ibvs_id std_msgs/UInt8 '1' --once")
                                 # close_roation_flag=1
                             else:
                                 if close_roation_flag==0:

@@ -1,58 +1,69 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os,sys,math
-import time
-import rospy
-from std_msgs.msg import Int32
+import numpy as np
+# import cv2
+
+# green = np.uint8([[[0, 0, 0]]])
+# hsvGreen = cv2.cvtColor(green,cv2.COLOR_BGR2HSV)
+# print(hsvGreen)
+# lowerLimit = (hsvGreen[0][0][0]-10,100,100)
+# upperLimit = (hsvGreen[0][0][0]+10,255,255)
+# print(upperLimit)
+# print(lowerLimit)
+def Sort_tile_mass_num(resultuv):
+    tempxy = []
+    tempy=[]
+    resultmp=[]
+    lastresult=[]
+    tmp=[]
+    newreslutuv=[]
+    # print resultuv
+    for i in range(len(resultuv)):
+        if resultuv[i][0][0]==i+1:
+            newreslutuv.append(resultuv[i])
+    for i in newreslutuv:
+        # if i[0][0]
+        tmp.append(i[1])
+    tempxy=sorted(tmp, reverse = True,key=lambda k: [k[1], k[0]])
+    print tempxy
+    for i in tempxy:
+        for ii in newreslutuv:
+            if i[0]==ii[1][0] and i[1]==ii[1][1]:
+                resultmp.append(ii)
+    for i in range(len(resultmp)):
+        woqu=(resultmp[i][1:])
+        # print "woqutype",type(woqu)
+        woqu.insert(0,[i+1])
+        # print woqu
+        lastresult.append(woqu)
+
+    # for i in resultuv:
+    #     tempx.append(i[1][0])
+    # print 'b',tempx
+    # tempx = list(set(tempx))
+    # print 'a',tempx
+    # tempx.sort(reverse=True)
+    # for j in tempx:  # 升序排列
+    #     for ii in resultuv:
+    #         if ii[1][0] == j:
+    #             resultx.append(ii)
+    #
+    # for i in resultx:
+    #     tempy.append(i[1][1])
+    # tempy.sort(reverse=True)
+    # tempy = list(set(tempy))
+    # for j in tempy:  # 升序排列
+    #     for ii in resultx:
+    #         if ii[1][1] == j:
+    #             lastresult.append(ii)
+    # print tempx
+    return lastresult
 def main():
-    rospy.init_node("topic_publisher")
-    pub=rospy.Publisher("count",Int32)
-    count=0
-    rate=rospy.Rate(2)
-    while not rospy.is_shutdown():
-        print "before publish-----"
-        pub.publish(count)
-        count+=1
-        print "count",count
-        time.sleep(2)
-        print "after publish-----"
-        rate.sleep()
+    kk= [[[1], [380, 427], [[415, 396], [411, 465], [348, 461], [346, 391]]], [[2], [379, 348], [[415, 381], [413, 313], [349, 383], [344, 314]]], [[3], [300, 422], [[334, 391], [332, 460], [269, 455], [267, 388]]], [[4], [299, 345], [[334, 313], [331, 382], [265, 311], [264, 377]]], [[5], [216, 420], [[254, 388], [246, 456], [186, 385], [185, 455]]], [[6], [219, 342], [[255, 309], [255, 375], [188, 378], [185, 310]]], [[7], [299, 265], [[334, 298], [333, 232], [265, 232], [265, 298]]], [[8], [220, 264], [[256, 299], [254, 231], [186, 298], [185, 232]]], [[9], [380, 266], [[417, 233], [414, 303], [346, 230], [344, 300]]], [[9], [380, 266], [[417, 234], [413, 303], [347, 230], [344, 296]]]]
+    dd=Sort_tile_mass_num(kk)
+    for u in kk:
+        print 'kk',u
+    for i in dd:
+        print i
 if __name__=="__main__":
     main()
-
-# o_path = os.getcwd()
-# # print o_path
-# sys.path.append('..')
-# from DemoScripts import tiling_vision_control_one_feature_demo_v0
-# def Sort_tile_feature(approx):
-#     result = []
-#     new_approx = []
-#
-#     for i in approx:
-#         new_approx.append(i[0])
-#     print new_approx
-#     temp = []
-#     for i in new_approx:
-#         temp.append(i[0])
-#     temp.sort(reverse=True)
-#     for i in temp:  # 升序排列
-#         for ii in new_approx:
-#             if ii[0] == i:
-#                 result.append(ii)
-#
-#     print result
-# 1,add detecting 24 tiles
-# 2,add 2x2 demo
-# approx=[[[342, 191]], [[415, 194]], [[406, 277]], [[334, 274]]]
-# Sort_tile_feature(approx)
-# q=[-3.06638444444,-1.51086333333,-2.09769444444,0.507284444444,1.51766666667,0.750983333333]
-# def Rotaion_tool_90(q_now,angular):
-#     q_new=[]
-#     for i in xrange(len(q_now)):
-#         if i ==5:
-#             q_new.append(q_now[i]+(angular*math.pi/180))
-#         else:
-#             q_new.append(q_now[i])
-#     return q_new
-# print "niubi",Rotaion_tool_90(q,-90)
-# # os.system("bash /data/ros/ur_ws_yue/src/tilling_robot/scripts/first_run.sh")

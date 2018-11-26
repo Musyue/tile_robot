@@ -25,10 +25,8 @@ from Functions_for_other_py import *
 
 from code_flags_sub import *
 from std_msgs.msg import UInt8
-""""
-Version 0 the elign time is after ibvs over
 """
-"""
+v1 use image space path planning 
 os.system("rostopic pub io_state std_msgs/String "55C8010155" --once")
 """
 class TilingVisionControl():
@@ -362,11 +360,11 @@ class TilingVisionControl():
     def Caculate_desire_uv_for_place(self,level):
         size=90
         uv0=self.tile_0_buf[-1][1]
-        id1=uv0
+        id1=[uv0[0]+10,uv0[1]]
         id2=[uv0[0],uv0[1]-size]
         id3=[uv0[0]-size,uv0[1]-size]
-        id4=[uv0[0]-size+19,uv0[1]]
-        id5=[uv0[0]-size+10,uv0[1]+size-16]
+        id4=[uv0[0]-size+10,uv0[1]+7]
+        id5=[uv0[0]-size+10,uv0[1]+size-13]
         # id4=[uv0[0]-size+10,uv0[1]-10]
         # id5=[uv0[0]-size+10,uv0[1]+size-10]
         # return [id1,id2,id3,id4,id5]
@@ -541,7 +539,8 @@ def main():
                     open_vison_flag = 1
                     open_suking_flag = 0
                     open_move_to_desire_flag=0
-                    open_vison_flag_desire=1
+                    # open_vison_flag_desire=1
+                    open_align_line_flag = 1
                     F0.tile_0_buf=[]
                     # time.sleep(3)
                     os.system("rostopic pub /pick_place_tile_vision/desire_detect_id std_msgs/UInt8 '1' --once")
@@ -550,6 +549,18 @@ def main():
                     close all flags
                     """
 
+                if open_align_line_flag==1:
+                    print """
+                        打开瓷砖对齐程序
+                        """
+                    os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '1' --once")
+                    time.sleep(10)
+                    if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
+                        if code_flag_sub.open_ur_rotation_id_buf[-1]==0:
+
+                            open_align_line_flag=0
+                            open_vison_flag_desire =1
+                            print "now tile is ok,you can go to next step-------"
                 if len(F0.tile_0_buf) != 0 and open_vison_flag_desire == 1:
                     print """
                     第四步，打开目标空间的视觉伺服程序
@@ -581,23 +592,14 @@ def main():
                     if feature_error_zero_flag_d:
                         # open_suking_flag_desire = 1
                         open_vison_flag_desire =0
-                        open_align_line_flag=1
+                        close_align_line_flag = 1
                         tile_nums+=1
                         time.sleep(0.5)
                         desire_tile_path_cacu=[]
                         print "---------you are now in desire space-----------"
 
-                    """
-                    打开瓷砖对齐程序
-                    """
-                if open_vison_flag_desire ==0 and open_align_line_flag==1:
-                    os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '1' --once")
-                    if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
-                        if code_flag_sub.open_ur_rotation_id_buf[-1]==0:
-                            close_align_line_flag=1
-                            open_align_line_flag=0
-                            print "now tile is ok,you can go to next step-------"
-                if open_vison_flag_desire ==0 and close_align_line_flag==1 and tile_nums:
+
+                if open_vison_flag_desire ==0 and close_align_line_flag==1:
                     print """
                     第五步，关闭视觉伺服，打开轨迹规划，并释放瓷砖
                     """

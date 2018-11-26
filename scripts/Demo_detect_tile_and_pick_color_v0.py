@@ -101,6 +101,19 @@ class DetectTile:
         mask = cv2.bitwise_or(white_mask, yellow_mask)
         return cv2.bitwise_and(image, image, mask=mask)
     def select_yellow(self,image):
+        # converted = self.convert_hls(image)
+        converted = self.convert_hsv(image)
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        white_mask = cv2.inRange(converted, lower, upper)
+        #yellow color mask
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        yellow_mask = cv2.inRange(converted, lower, upper)
+        # combine the mask
+        mask = cv2.bitwise_or(white_mask, yellow_mask)
+        return cv2.bitwise_and(image, image, mask=mask)
+    def select_yellow_bk(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
         lower = np.uint8([10, 0, 20])
@@ -429,7 +442,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,1)
+            Y_smooth = self.apply_smoothing(Y_gray,15)
             Y_edges = self.detect_edges(Y_smooth)
             Y_kernel = cv2.getStructuringElement( cv2.MORPH_RECT, ( MORPH, MORPH ) )
             Y_closed = cv2.morphologyEx( Y_edges.copy(), cv2.MORPH_CLOSE, Y_kernel )

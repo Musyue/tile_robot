@@ -100,6 +100,19 @@ class DetectTile:
         # combine the mask
         mask = cv2.bitwise_or(white_mask, yellow_mask)
         return cv2.bitwise_and(image, image, mask=mask)
+    def select_yellow_1(self,image):
+        # converted = self.convert_hls(image)
+        converted = self.convert_hsv(image)
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        white_mask = cv2.inRange(converted, lower, upper)
+        #yellow color mask
+        lower = np.uint8([0, 0, 0])
+        upper = np.uint8([180, 100, 255])
+        yellow_mask = cv2.inRange(converted, lower, upper)
+        # combine the mask
+        mask = cv2.bitwise_or(white_mask, yellow_mask)
+        return cv2.bitwise_and(image, image, mask=mask)
     def select_yellow(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
@@ -174,7 +187,7 @@ class DetectTile:
         return cv2.HoughLinesP(image, rho=1, theta=np.pi / 180, threshold=20, minLineLength=20, maxLineGap=300)
     """
     line=[(-0.2867132867132867, 375.1958041958042), (-0.013986013986013986, 204.23776223776224), (-0.2857142857142857, 382.85714285714283), (-0.03292181069958848, 216.3127572016461)]
-    get the best line
+    get the best line 
     """
 
     def Get_same_slope(self,line):
@@ -336,7 +349,7 @@ class DetectTile:
             approx = cv2.approxPolyDP(cont, 0.1 * arc_len, True)
             # print "cv2.contourArea(cont)",cv2.contourArea(cont)
             # print "approx",len(np.array(approx).reshape(-1,2))
-            if cv2.contourArea(cont) > 3000 and cv2.contourArea(cont) < 15000:
+            if cv2.contourArea(cont) > 3000 and cv2.contourArea(cont) < 8000:
             # if cv2.contourArea(cont) > 3000:
                 if (len(approx) == 4):
                     IS_FOUND = 1
@@ -382,14 +395,15 @@ class DetectTile:
                     print "all info for tile------", resultuv
                     cv2.line(rgb, ((angular_point[0][0]+angular_point[1][0])/2,(angular_point[0][1]+angular_point[1][1])/2), (cX,cY), (255,0,0), 3)
                     print "Now tile id",count
-                    tile_uv.tile_id = count
-                    tile_uv.obj_desire = obj_desire
-                    tile_uv.cen_uv.uvinfo = [cX, cY]
-                    tile_uv.f1th_uv.uvinfo = angular_point[0]
-                    tile_uv.s2th_uv.uvinfo = angular_point[1]
-                    tile_uv.t3th_uv.uvinfo = angular_point[2]
-                    tile_uv.f4th_uv.uvinfo = angular_point[3]
-                    self.tile_pub.publish(tile_uv)
+                    if count == 1:
+                        tile_uv.tile_id = count
+                        tile_uv.obj_desire = obj_desire
+                        tile_uv.cen_uv.uvinfo = [cX, cY]
+                        tile_uv.f1th_uv.uvinfo = angular_point[0]
+                        tile_uv.s2th_uv.uvinfo = angular_point[1]
+                        tile_uv.t3th_uv.uvinfo = angular_point[2]
+                        tile_uv.f4th_uv.uvinfo = angular_point[3]
+                        self.tile_pub.publish(tile_uv)
 
                     latest_central = now_central
 
@@ -505,11 +519,11 @@ class DetectTile:
         row 行
         """
         bottom_left_cols1 = 0.33
-        bottom_left_rows1 = 0.30
+        bottom_left_rows1 = 0.15
         top_left_cols1 = 0.33
         top_left_rows1 = 0.08
         bottom_right_cols1 = 0.75
-        bottom_right_rows1 = 0.30
+        bottom_right_rows1 = 0.15
         top_right_cols1 = 0.75
         top_right_rows1 = 0.08
         sucker_line_uv = sucker_tile_line()
@@ -634,7 +648,7 @@ def main():
         3,Use for two features IBVS
         """
         flag_data = code_flags()
-        rate = rospy.Rate(60)
+        rate = rospy.Rate(3)
         while not rospy.is_shutdown():
             try:
                 if len(code_flag_sub.object_detect_id_buf)!=0:
