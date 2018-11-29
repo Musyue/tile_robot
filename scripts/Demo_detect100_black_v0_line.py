@@ -137,12 +137,12 @@ class DetectTile:
     def select_yellow(self,image):
         converted = self.convert_hls(image)
         # converted = self.convert_hsv(image)
-        lower = np.uint8([0, 0, 0])
-        upper = np.uint8([255,255,255])
+        lower = np.uint8([10, 50, 145])
+        upper = np.uint8([60, 255, 255])
         white_mask = cv2.inRange(converted, lower, upper)
         #yellow color mask
-        lower = np.uint8([0, 0, 0])
-        upper = np.uint8([255,255,255])
+        lower = np.uint8([10, 50, 145])
+        upper = np.uint8([60, 255, 255])
         yellow_mask = cv2.inRange(converted, lower, upper)
         # combine the mask
         mask = cv2.bitwise_or(white_mask, yellow_mask)
@@ -309,7 +309,7 @@ class DetectTile:
             else:
                 pass
     def Judge_isnot_same_tile(self,latest_central,now_central):
-        if abs(latest_central[0]-now_central[0])<=20 and abs(latest_central[1]-now_central[1])<=20:
+        if abs(latest_central[0]-now_central[0])<=3 and abs(latest_central[1]-now_central[1])<=3:
             return 1
         else:
             return 0
@@ -421,7 +421,7 @@ class DetectTile:
             approx = cv2.approxPolyDP(cont, 0.1 * arc_len, True)
             # print "cv2.contourArea(cont)",cv2.contourArea(cont)
             # print "approx",len(np.array(approx).reshape(-1,2))
-            if cv2.contourArea(cont) > 2000 and cv2.contourArea(cont) < 5500:
+            if cv2.contourArea(cont) > 5000 and cv2.contourArea(cont) < 20000:
             # if cv2.contourArea(cont) > 3000:
                 if (len(approx) == 4):
                     # print "a"
@@ -541,7 +541,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,1)
+            Y_smooth = self.apply_smoothing(Y_gray,9)
             Y_edges = self.detect_edges(Y_smooth)
             Y_kernel = cv2.getStructuringElement( cv2.MORPH_RECT, ( MORPH, MORPH ) )
             Y_closed = cv2.morphologyEx( Y_edges.copy(), cv2.MORPH_CLOSE, Y_kernel )
@@ -550,7 +550,7 @@ class DetectTile:
             if len(Y_contours)!=0:
                 rgb = self.draw_triangle_numbers(Y_contours, rgb,'o')
             else:
-                print "There is no tile0,you need put one black tile"
+                print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
             cv2.circle(rgb, (316,251), 10, (20, 100, 220), -2)
             cv2.putText(rgb, 'center', (316,251),
@@ -617,11 +617,11 @@ class DetectTile:
         row 行
         """
         bottom_left_cols1 = 0.33
-        bottom_left_rows1 = 0.15
+        bottom_left_rows1 = 0.45
         top_left_cols1 = 0.33
         top_left_rows1 = 0.08
         bottom_right_cols1 = 0.75
-        bottom_right_rows1 = 0.15
+        bottom_right_rows1 = 0.45
         top_right_cols1 = 0.75
         top_right_rows1 = 0.08
         sucker_line_uv = sucker_tile_line()
@@ -642,7 +642,7 @@ class DetectTile:
             YHLS=self.select_yellow(rgb)
             # print "YHLS",YHLS
             Y_gray = self.convert_gray_scale(YHLS)
-            Y_smooth = self.apply_smoothing(Y_gray,1)
+            Y_smooth = self.apply_smoothing(Y_gray,11)
             Y_edges = self.detect_edges(Y_smooth)
             New_edges = Y_edges.copy()
 
@@ -652,9 +652,9 @@ class DetectTile:
             _,Y_contours, Y_h = cv2.findContours( Y_closed.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE )
             # print "Y_h",Y_h,Y_contours
             if len(Y_contours)!=0:
-                rgb = self.draw_triangle_numbers(Y_contours, rgb,'d')
+                rgb = self.draw_triangle_numbers(Y_contours, rgb,'o')
             else:
-                print "There is no tile0,you need put one black tile"
+                print "There is no tile0,you need put one blue tile"
                 self.pub_empty_uv_info(0, 'o')
             cv2.circle(rgb, (316,251), 10, (20, 100, 220), -2)
             cv2.putText(rgb, 'center', (316,251),
@@ -754,7 +754,7 @@ def main():
                         k.process_rgb_object_image(k.rgb_image)
                         # cen=k.process_rgb_image(k.rgb_image)
                         # print "cenpixel\n",cen
-                        time.sleep(1.5)
+                        # time.sleep(1)
                 else:
                     print "please wait open object vision flag----"
                 if len(code_flag_sub.desire_detect_id_buf)!=0:
@@ -763,7 +763,7 @@ def main():
                         # cen=k.process_rgb_image(k.rgb_image)
                         # print "cenpixel\n",cen
                         # print "haha"
-                        time.sleep(1.5)
+                        # time.sleep(1)
                 else:
                     print "please wait open desire vision flag----"
                 rate.sleep()

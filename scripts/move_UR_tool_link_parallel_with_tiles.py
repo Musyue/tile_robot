@@ -10,7 +10,7 @@ from tilling_robot.msg import tileuv
 from sensor_msgs.msg import JointState
 from ur5_pose_get import *
 from code_flags_sub import *
-from std_msgs.msg import UInt8
+from std_msgs.msg import UInt8,Float32
 
 """
 先旋转最后一个关节，直到线检测斜率一样，斜率和目标直线反号，则减小最后一个关节的选择角度，朝负方向走。同号则朝正方向走
@@ -20,6 +20,9 @@ class MoveURToolParalleTile():
     def __init__(self):
         self.sucker_tile_buf=[]
         self.tile_uv_buf=[]
+        self.pubsucker = rospy.Publisher("/pick_place_tile_vision/sucker_slop", Float32, queue_size=10)
+        self.pubtile = rospy.Publisher("/pick_place_tile_vision/tile_slop", Float32, queue_size=10)
+        self.puberror = rospy.Publisher("/pick_place_tile_vision/slop_error", Float32, queue_size=10)
     def Init_node(self):
         rospy.init_node("move_ur5_by_test")
         pub=rospy.Publisher("/ur_driver/URScript",String,queue_size=10)
@@ -72,10 +75,10 @@ class MoveURToolParalleTile():
                 x1=self.tile_uv_buf[-1][2][0]
                 y1=self.tile_uv_buf[-1][2][1]
                 """
-                Point1
+                Point2
                 """
-                x2=self.tile_uv_buf[-1][3][0]
-                y2 = self.tile_uv_buf[-1][3][1]
+                x2=self.tile_uv_buf[-1][4][0]
+                y2 = self.tile_uv_buf[-1][4][1]
                 """
                 ((x1+x2)/2,(y1+y2)/2)
                 """
@@ -87,59 +90,69 @@ class MoveURToolParalleTile():
                 """
                 x4=self.tile_uv_buf[-1][1][0]
                 y4=self.tile_uv_buf[-1][1][1]
-                if (x1-x2)!=0:
-                    if x3-x4 !=0:
-                        k1=0.1*(y3-y4)/(x3-x4)
-                        intercept1=y4-k1*x4
-                        return (k1,intercept1)
-                    else:
-                        k1=0
-                        intercept1=y4
-                        return (k1, intercept1)
+                print "x1-x2",x1-x2
+                print "x3-x4",x3 - x4
+
+                # while (x1-x2)!=0:
+                if (x3-x4) !=0:
+                    k1=(y3-y4)/(x3-x4)
+                    intercept1=y4-k1*x4
+                    return (k1,intercept1)
                 else:
-                    pass
+                    k1=0
+                    intercept1=y4
+                    return (k1, intercept1)
+                # else:
+                #     pass
     def compare_slop_with_sucker_tile(self,tile_id):
         place_tile=self.caculate_tile_slop_intercept(tile_id)
-        error_size=0.016#0.099
+        error_size=0.07#0.099
         try:
             if len(self.sucker_tile_buf)!=0:
                 sucker_tile=self.sucker_tile_buf[-1][2]
-                print "place_tile[0]-sucker_tile[0]", place_tile[0] - sucker_tile[0]
+                if place_tile[0]!=None:
+                    self.pubtile.publish(place_tile[0])
+                if sucker_tile[0]!=None:
+                    self.pubsucker.publish(sucker_tile[0])
+                if (place_tile[0]-sucker_tile[0])!=None:
+                    self.puberror.publish((place_tile[0]-sucker_tile[0]))
                 print "place_tile[0]",place_tile[0]
                 print "sucker_tile[0]",sucker_tile[0]
+                print "place_tile[0]-sucker_tile[0]", place_tile[0] - sucker_tile[0]
+                # if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
                 if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
                     return 1
                 else:
                     return 0
-                # if place_tile[0]>0 and sucker_tile[0]>0:
-                #     if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
-                #         return 1
-                #     else:
-                #         return 0
-                # elif place_tile[0]>0 and sucker_tile[0]<0:
-                #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
-                #         return 1
-                #     else:
-                #         return 0
-                # elif place_tile[0]<0 and sucker_tile[0]>0:
-                #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
-                #         return 1
-                #     else:
-                #         return 0
-                # elif place_tile[0]<0 and sucker_tile[0]<0:
-                #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
-                #         return 1
-                #     else:
-                #         return 0
-                # elif place_tile[0]==0 and sucker_tile[0]==0:
-                #     return 1
-                # elif (place_tile[0]==0 and sucker_tile[0]!=0) or (place_tile[0]!=0 and sucker_tile[0]==0):
-                #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
-                #         return 1
-                #     else:
-                #         return 0
-                # else:
-                #     pass
+                    # if place_tile[0]>0 and sucker_tile[0]>0:
+                    #     if abs((place_tile[0]) - (sucker_tile[0])) <= error_size:
+                    #         return 1
+                    #     else:
+                    #         return 0
+                    # elif place_tile[0]>0 and sucker_tile[0]<0:
+                    #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
+                    #         return 1
+                    #     else:
+                    #         return 0
+                    # elif place_tile[0]<0 and sucker_tile[0]>0:
+                    #     if abs((place_tile[0]) + (sucker_tile[0])) <= error_size:
+                    #         return 1
+                    #     else:
+                    #         return 0
+                    # elif place_tile[0]<0 and sucker_tile[0]<0:
+                    #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
+                    #         return 1
+                    #     else:
+                    #         return 0
+                    # elif place_tile[0]==0 and sucker_tile[0]==0:
+                    #     return 1
+                    # elif (place_tile[0]==0 and sucker_tile[0]!=0) or (place_tile[0]!=0 and sucker_tile[0]==0):
+                    #     if abs(abs(place_tile[0]) - abs(sucker_tile[0])) <= error_size:
+                    #         return 1
+                    #     else:
+                    #         return 0
+                    # else:
+                    #     pass
         except:
             print "No slop"
     def judge_slop_with_sucker_tile_symbol(self,tile_id):
@@ -180,10 +193,10 @@ class MoveURToolParalleTile():
 
 def main():
     t = 0
-    # vel = 0.1
-    # ace = 50
-    vel = 1.4
-    ace = 1.05
+    vel = 0.1
+    ace = 50
+    # vel = 1.4
+    # ace = 1.05
     q_now_start=[-110.25,-124.55,-46.95,-96.37,87.76,0.07]
 
     T=MoveURToolParalleTile()
@@ -203,16 +216,16 @@ def main():
         print "q_now_new", q_now_new
         if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
             if code_flag_sub.open_ur_rotation_id_buf[-1]==1:
-                if (q_now_new[5]+step_size)<0.99:#0.95
+                if (q_now_new[5]+step_size)<1.25:#0.95
                     print "q_now_new[5]",q_now_new[5]
                     if len(T.tile_uv_buf)!=0 and len(T.sucker_tile_buf)!=0:
                         # print "T.tile_uv_buf",T.tile_uv_buf
-                        try:
+                        # try:
                             if T.compare_slop_with_sucker_tile(1):
                                 print "congrtuations tile is parallel"
-                                # T.moveur(pub, q_now_new, ace, 0.3, t)
-                                os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '0' --once")
                                 T.moveur(pub, q_now_new, ace, 0.3, t)
+                                os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '0' --once")
+                                # T.moveur(pub, q_now_new, ace, 0.3, t)
                                 ##open second vision
                                 # os.system(
                                 #     "rostopic pub /pick_place_tile_vision/desire_ibvs_id std_msgs/UInt8 '1' --once")
@@ -234,8 +247,8 @@ def main():
                                         T.moveur(pub, pub_q, ace, vel, t)
                                         # temp_q = pub_q
                                     step_size+=0.05
-                        except:
-                            print "error"
+                        # except:
+                        #     print "error"
                 else:
                     step_size=0
             else:

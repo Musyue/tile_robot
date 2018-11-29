@@ -45,6 +45,7 @@ class TilingVisionControl():
         self.tile_0_buf=[]
         self.tile_1_buf = []
         self.tile_2_buf =[]
+        self.tile_3_buf = []
         self.ledstate=None
         self.changeuv=None
         self.w_pub = rospy.Publisher("/w_param", Float64, queue_size=10)
@@ -60,78 +61,53 @@ class TilingVisionControl():
     0:o
     1:d
     """
+    def add_tile_info(self,msg,bufname):
+        if len(bufname) == 10:
+            bufname = bufname[1:]
+            tile_id = msg.tile_id
+            cen_uv = msg.cen_uv
+            f1th_uv = msg.f1th_uv
+            s2th_uv = msg.s2th_uv
+            t3th_uv = msg.t3th_uv
+            f4th_uv = msg.f4th_uv
+            bufname.append(
+                [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
+            # print "---------self.uvlist_buf",self.uvlist_buf
+        else:
+            tile_id = msg.tile_id
+            cen_uv = msg.cen_uv
+            f1th_uv = msg.f1th_uv
+            s2th_uv = msg.s2th_uv
+            t3th_uv = msg.t3th_uv
+            f4th_uv = msg.f4th_uv
+            bufname.append(
+                [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
+
     def callback(self, msg):
         if msg.tile_id == 1:
-            if len(self.tile_0_buf) == 10:
-                self.tile_0_buf = self.tile_0_buf[1:]
-                tile_id = msg.tile_id
-                cen_uv = msg.cen_uv
-                f1th_uv = msg.f1th_uv
-                s2th_uv = msg.s2th_uv
-                t3th_uv = msg.t3th_uv
-                f4th_uv = msg.f4th_uv
-                self.tile_0_buf.append(
-                    [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
-                # print "---------self.uvlist_buf",self.uvlist_buf
-            else:
-                tile_id = msg.tile_id
-                cen_uv = msg.cen_uv
-                f1th_uv = msg.f1th_uv
-                s2th_uv = msg.s2th_uv
-                t3th_uv = msg.t3th_uv
-                f4th_uv = msg.f4th_uv
-                self.tile_0_buf.append(
-                    [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
+            self.add_tile_info(msg,self.tile_0_buf)
         else:
-            print "wait opencv caulate tile uv ----"
-            time.sleep(1)
-        # if msg.tile_id == 2:
-        #     if len(self.tile_1_buf) == 10:
-        #         self.tile_1_buf = self.tile_1_buf[1:]
-        #         tile_id = msg.tile_id
-        #         cen_uv = msg.cen_uv
-        #         f1th_uv = msg.f1th_uv
-        #         s2th_uv = msg.s2th_uv
-        #         t3th_uv = msg.t3th_uv
-        #         f4th_uv = msg.f4th_uv
-        #         self.tile_1_buf.append(
-        #             [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
-        #         # print "---------self.uvlist_buf",self.uvlist_buf
-        #     else:
-        #         tile_id = msg.tile_id
-        #         cen_uv = msg.cen_uv
-        #         f1th_uv = msg.f1th_uv
-        #         s2th_uv = msg.s2th_uv
-        #         t3th_uv = msg.t3th_uv
-        #         f4th_uv = msg.f4th_uv
-        #         self.tile_1_buf.append(
-        #             [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
-        # else:
-        #     print "wait opencv caulate tile uv ----"
-        # if msg.tile_id == 3:
-        #     if len(self.tile_1_buf) == 10:
-        #         self.tile_2_buf = self.tile_2_buf[1:]
-        #         tile_id = msg.tile_id
-        #         cen_uv = msg.cen_uv
-        #         f1th_uv = msg.f1th_uv
-        #         s2th_uv = msg.s2th_uv
-        #         t3th_uv = msg.t3th_uv
-        #         f4th_uv = msg.f4th_uv
-        #         self.tile_2_buf.append(
-        #             [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
-        #         # print "---------self.uvlist_buf",self.uvlist_buf
-        #     else:
-        #         tile_id = msg.tile_id
-        #         cen_uv = msg.cen_uv
-        #         f1th_uv = msg.f1th_uv
-        #         s2th_uv = msg.s2th_uv
-        #         t3th_uv = msg.t3th_uv
-        #         f4th_uv = msg.f4th_uv
-        #         self.tile_2_buf.append(
-        #             [tile_id, cen_uv.uvinfo, f1th_uv.uvinfo, s2th_uv.uvinfo, t3th_uv.uvinfo, f4th_uv.uvinfo])
-        # else:
-        #     print "wait opencv caulate tile uv ----"
-        # print " msg.tile_id", msg.tile_id
+            # print "wait opencv get tile uv ----"
+            # time.sleep(1)
+            pass
+        if msg.tile_id == 2:
+            self.add_tile_info(msg,self.tile_1_buf)
+        else:
+            pass
+            # print "wait opencv get tile uv ----"
+            # time.sleep(1)
+        if msg.tile_id == 3:
+            self.add_tile_info(msg,self.tile_2_buf)
+        else:
+            # print "wait opencv get tile uv ----"
+            # time.sleep(1)
+            pass
+        if msg.tile_id == 4:
+            self.add_tile_info(msg,self.tile_3_buf)
+        else:
+            # print "wait opencv get tile uv ----"
+            # time.sleep(1)
+            pass
 
     def Get_ur_X(self,info):
 
@@ -340,7 +316,7 @@ class TilingVisionControl():
         q_new = get_IK_from_T(Kine, new_T, q_now).tolist()
         return q_new
     """
-    这是一个非常大的坑，垂直的机械臂驱动，竟然需要改x,y两个坐标才行
+    这是一个非常大的坑，notice the base link ,where the line oretation is the -y in our tools link
     """
     def move_ur_to_desire_vertical(self,x_distance,y_distance,q_now):
         Kine=Kinematic()
@@ -395,8 +371,8 @@ def main():
     camf=624.0429 * 1e-03
     #316,251
     # uvcentral_place=[316,251]
-    uvcentral_place=[323,174]#320,201#180
-    uvcentral = [362,123]#sucking central109-125OK,370,201#368,95#120
+    uvcentral_place=[342,178]#320,201#180323,174#325,163#355,diyige canshuda,you yi
+    uvcentral = [375,165]#sucking central109-125OK,370,201#368,95#120#362,123#133da xiang xia,
     First_joint_angular=[]
     calibinfo=[
         0.109982645426,
@@ -447,7 +423,7 @@ def main():
     Object_joint_angular_sucking_state = [-58.85,-90.39,-88.02,-93.75,86.74,69.84]#66.02
     Object_joint_angular_sucking_state_new= F0.change_angle_to_pi(Object_joint_angular_sucking_state)
     Desire_joint_angular_vision_state=[]
-    Desire_joint_angular_place_state = [-175.78,-82.87,-112.83,18.08,86.98,43.05]
+    Desire_joint_angular_place_state = [-175.78,-78.37,-116.14,17.25,86.49,43.05]
     Desire_joint_angular_place_state_new = F0.change_angle_to_pi(Desire_joint_angular_place_state)
     print "First_joint_angular",First_joint_angular
 
@@ -472,6 +448,11 @@ def main():
     msg_uv_d = uv()
     os.system("rostopic pub /pick_place_tile_vision/object_detect_id std_msgs/UInt8 '1' --once")
     while not rospy.is_shutdown():
+        # print "F0.tile_0_buf",F0.tile_0_buf[-1]
+        # print "F0.tile_1_buf",F0.tile_1_buf[-1]
+        # print "F0.tile_2_buf",F0.tile_2_buf[-1]
+        # print "F0.tile_3_buf",F0.tile_3_buf[-1]
+        # time.sleep(1)
         desire_tile_path_cacu=[]
         try:
             """
@@ -554,36 +535,39 @@ def main():
                     打开瓷砖对齐程序
                     """
                 if open_align_line_flag==1:
-                    os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '1' --once")
-                    if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
-                        if code_flag_sub.open_ur_rotation_id_buf[-1]==0:
+                    try:
+                        #os.system("rostopic pub /pick_place_tile_vision/open_ur_rotation_id std_msgs/UInt8 '1' --once")
+                        if len(code_flag_sub.open_ur_rotation_id_buf)!=0:
+                            if code_flag_sub.open_ur_rotation_id_buf[-1]==0:
 
-                            open_align_line_flag=0
-                            open_vison_flag_desire =1
-                            print "now tile is ok,you can go to next step-------"
+                                open_align_line_flag=0
+                                open_vison_flag_desire =1
+                                print "now tile is ok,you can go to next step-------"
+                    except KeyboardInterrupt:
+                        sys.exit()
                 if len(F0.tile_0_buf) != 0 and open_vison_flag_desire == 1:
                     print """
                     第四步，打开目标空间的视觉伺服程序
                     """
                 # if len(F0.tile_0_buf)!=0 and open_vison_flag_desire ==1:
                     uvcentral_place_2 = [316,251]
-                    uvm2=[uvcentral_place_2]
+                    # uvm2=[uvcentral_place_2]
                     uvmm = [uvcentral_place]
                     print "num0，打开目标空间的视觉伺服程序"
                     print "-------目标空间贴第"+str(tile_nums)+"块砖-----"
                     xpp=F0.tile_0_buf[-1][1]
 
-                    uv0=xpp
-                    desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(2)
-                    print "xpp=F0.tile_0_buf[-1][1]",F0.tile_0_buf[-1][1]
-                    print "desire_tile_path_cacu[tile_nums]",desire_tile_path_cacu[tile_nums]
-                    print "desire_tile_path_cacu----->>>>>", desire_tile_path_cacu
+                    # uv0=xpp
+                    # desire_tile_path_cacu=F0.Caculate_desire_uv_for_place(2)
+                    # print "xpp=F0.tile_0_buf[-1][1]",F0.tile_0_buf[-1][1]
+                    # print "desire_tile_path_cacu[tile_nums]",desire_tile_path_cacu[tile_nums]
+                    # print "desire_tile_path_cacu----->>>>>", desire_tile_path_cacu
                     # time.sleep(1)
                     if tile_nums < 3:
-                        q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,desire_tile_path_cacu[tile_nums])
+                        q_pub_now_d=F0.ibvs_run_ur5(uvmm,z,q_now,calibinfo,xpp)
                         MoveUrString_1=F0.Move_ur(q_pub_now_d, ace_ibvs, vel_ibvs, urt)
                         ur_pub.publish(MoveUrString_1)
-                        feature_error_zero_flag_d = F0.check_vison_error_is_zero(desire_tile_path_cacu[tile_nums],
+                        feature_error_zero_flag_d = F0.check_vison_error_is_zero(xpp,
                                                                                  uvcentral_place, 3)
 
                     """

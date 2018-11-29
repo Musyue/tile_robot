@@ -70,7 +70,7 @@ def main():
         if range_filter == 'RGB':
             frame_to_thresh = image.copy()
         else:
-            frame_to_thresh = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+            frame_to_thresh = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
     else:
         camera = cv2.VideoCapture(0)
 
