@@ -39,6 +39,9 @@ class TilingVisionControl():
         self.delta=delta
         self.lamda=lamda
 
+
+
+
         self.tile_0_buf=[]
         self.tile_1_buf = []
         self.tile_2_buf =[]
