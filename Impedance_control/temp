@@ -1,0 +1,130 @@
+function r3=impedance_compute()
+fd=-1;
+ke=1;
+lamda=1;
+rd3=0.15;
+r_ref3=0.1;
+delta_t=0.01;
+n=1000;
+r3=zeros(n+1,1);
+fe=zeros(n+1,1);
+for i=1:1:n
+if r3(i)-r_ref3<=0
+    fe(i)=0;
+else
+    fe(i)=-ke*(r3(i)-r_ref3);
+end
+rdot=-lamda*(r3(i)-rd3)+fe(i)-fd;
+% rdot=-lamda*(r3(i)-rd3);
+r3(i+1)=r3(i)+rdot*delta_t;
+end
+subplot(2,1,1);
+plot(r3);
+subplot(2,1,2);
+plot(fe);
+end
+% impedance control is a very interesting controller, the control target is
+% not to track any desired force and position, instead, is aims to obtain
+% the balance status between desired force and desired position.
+
+% the steps for experiment:
+Experiment preparation: the interseciton laser point is located at image plane,the camera polishing tool and force sensor should be aligned with the endeffector
+z: the depth between wall and camera (should be calibrated)
+u v: the pixel value of one feature point on the polish tool in the image plane
+udsr vdsr: the desired pixel value of feature point in the image plane
+udot vdot: the feature velocity in the image plane
+udot_dsr vdot_dsr: the desired feature velocity in the image plane
+then:
+udot=udot_dsr-lamda*(u-udsr);
+vdot=vdot_dsr-lamda*(v-vdsr);
+
+note: the desire trajectory is one circle:
+u_dsr=u_insect+r*cos(theta)
+v_dsr=v_insect+r*sin(theta)
+udot_dsr=-r*sin(theta)*theta';
+vdot_dsr=r*cos(theta)*theta';
+u_insect v_insect: the intersection point
+r: circle radius
+theta: the designed theta
+
+the intrinsic camera parameters should be calibrated, which is expressed as:
+udot=f/pu*z*vx_cam
+--> vx_cam=udot*pu/(f*z);
+vdot=f/pv*z*vy_cam
+--> vy_cam=vdot*pv/(f*z);
+vz_cam=0;
+
+the pose between endeffector and camera should be calibrated, then the
+velocity transformation relationship between endeffecter and camera is:
+rot=[r11 r12 r13;
+     r21 r22 r23;
+      0   0   0] describes the rotation matrix of endeffector in camera frame
+vx_eff=r11*vx_cam+r12*vy_cam+r13*vz_cam;
+vy_eff=r21*vy_cam+r22*vy_cam+r23*vz_cam;
+[vx_eff vy_eff 0]'=[r11*vx_cam+r12*vy_cam+r13*vz_cam r21*vy_cam+r22*vy_cam+r23*vz_cam 0]
+                  =rot*[vx_cam vy_cam 0]'
+                  =rot*v_cam
+                  =rot*[udot*pu/(f*z) vdot*pv/(f*z) 0]'
+
+the endeffector velocity in z axis direction:
+vz_eff=-lamda2*(r3-r3_dsr)+fe-fd
+note:
+we assume that force sensor is aligned with endeffector, then:
+the force value measured by force sensor is:
+[fx fy fz];
+and the desire force value is :
+[fx_dsr fy_dsr fz_dsr]
+in our experiment, the measured force value is:
+[0 0 fz];
+and the desire force value is:
+[0 0 fz_dsr], and fz_dsr is a negative value
+r3 is the position in the depth direction
+r3_dsr is the desired endeffector position in the depth direction which should be precisely set
+note:
+r3=s13*x_be+s23*y_be+s33*z_be;
+[x_be y_be z_be] describes the endeffector position in base frame
+the relationship between endeffector and base frame is:
+sot=[s11 s12 s13;
+     s21 s22 s23;
+     s31 s32 s33]
+then describes the rotation matrix of endeffector in the base frame
+sot'=[s11 s21 s31;
+      s12 s22 s32;
+      s13 s23 s33];
+therefore [0 0 vz_eff]'=-lamda2*([0 0 r3]'-[0 0 r3_dsr]')+[0 0 fz]'-[0 0 fz_dsr];
+
+the above velocity: vx_eff vy_eff vz_eff is velocity in endeffector frame
+therefore the velocity in base frame is:
+v_base=sot*v_eff;
+v_base=[vx_base vy_base vz_base]';
+v_eff=[vx_eff vy_eff vz_eff]';
+and using the kinematic jocobian matrix J(6X6)
+qdot=J^(-1)*[v_base 0 0 0]';
+which is the final input of angular velocity control mode
+
+input sensor value:
+(1)uv of intersection point,
+(2)uv of feature point of polishing tool
+(3)force sensor value
+output:
+the angular velocity of ur5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

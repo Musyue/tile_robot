@@ -6,7 +6,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import JointState
 import os, time
 import sys
-
+import math
 class Urposition():
 
     def __init__(self, name = "ur_info_subscriber" ):
@@ -94,17 +94,24 @@ def list_element_minus( v1, v2):
 
 def list_element_multiple( v1, num ):
     return [ item * num  for item in v1 ]
-
+def getangle(listb):
+    lista=[]
+    for i in listb:
+        temp=i/math.pi*180
+        lista.append(temp)
+    return lista
 
 def main():
     ur_info_reader = Urposition()
     ur_info_reader.Init_node()
+    rate=rospy.Rate(1)
     while not rospy.is_shutdown():
         pass
         # print ( "now_pos: ", type(ur_info_reader.now_ur_pos))
 
-        # print ("ave_pos_ur:", ur_info_reader.ave_ur_pose)
+        print ("ave_pos_ur:", getangle(ur_info_reader.ave_ur_pose))
     # rospy.spin()
+        rate.sleep()
 
 
 if __name__ == "__main__":
