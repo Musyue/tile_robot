@@ -254,6 +254,7 @@ class DetectLine:
         tile_uv.t3th_uv.uvinfo = [0,0]
         tile_uv.f4th_uv.uvinfo = [0,0]
         self.tile_pub.publish(tile_uv)
+
     def process_rgb_image(self,rgb_image):
 
         MORPH = 7
