@@ -1,0 +1,197 @@
+from numpy import *
+from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+#####robot class #####
+class robot:
+    # basic parameters
+    NAME = 'robot'
+    JOINT_SIZE = 0
+    A = []
+    ALPHA = []
+    D = []
+    JOINT_TYPE = []
+    THETA = []
+    # other parameters
+
+    def __init__(self, name, joint_size, a, alpha, d, theta):
+        self.NAME = name
+        self.JOINT_SIZE = joint_size
+        self.A = a
+        self.ALPHA = alpha
+        self.D = d
+        self.THETA = theta
+        # joint_type
+        return;
+    
+    # modify DH method (Creig`s book)
+    def MDH(self, a, alpha, d, cta):
+        ans = array([[cos(cta),            -sin(cta),             0,           a], 
+                     [sin(cta)*cos(alpha),  cos(cta)*cos(alpha), -sin(alpha), -sin(alpha)*d], 
+                     [sin(cta)*sin(alpha),  cos(cta)*sin(alpha),  cos(alpha),  cos(alpha)*d], 
+                     [0,                    0,                    0,           1]])
+        return ans;
+        
+    def fk(self, theta):
+        T = array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        for k in range(0, self.JOINT_SIZE):
+            T = dot(T, self.MDH(self.A[k], self.ALPHA[k], self.D[k], theta[k]))
+        return T
+
+    def dk(self, theta):
+        T = zeros((self.JOINT_SIZE+1, 4, 4));
+        T[0] = array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        for k in range(0, self.JOINT_SIZE):
+            T[k+1] = dot(T[k], self.MDH(self.A[k], self.ALPHA[k], self.D[k], theta[k]))
+        J = zeros((6, 6))
+        for k in range(0, self.JOINT_SIZE):
+            J[0:3, k] = cross(T[k+1][0:3, 2], T[self.JOINT_SIZE][0:3, 3] - T[k+1][0:3, 3]).transpose()
+            J[3:6, k] = T[k+1][0:3, 2]
+        return J
+
+    def sk(self, w):
+        return array([[0, -w[2], w[1]], [w[2], 0, -w[0]], [-w[1], w[0], 0]])
+
+    def ik(self, Rt, Pt, q):
+        q_ans = q.copy()
+        Tc = self.fk(q[0:6])
+        error = Pt - Tc[0:3, 3]
+        count = 0
+        while linalg.norm(error) > 1e-5 and count < 10:
+            J = self.dk(q[0:6])
+            if fabs(linalg.det(J)) < 1e-5:
+                print('singularity')
+                return q_ans
+            dv = error
+            dw = 0.5*(cross(Tc[0:3, 0], Rt[0:3, 0]) + cross(Tc[0:3, 1], Rt[0:3, 1]) + cross(Tc[0:3, 2], Rt[0:3, 2]))
+            #L = -0.5*(dot(self.sk(Rt[0:3, 0]), self.sk(Tc[0:3, 0])) + dot(self.sk(Rt[0:3, 1]), self.sk(Tc[0:3, 1])) + dot(self.sk(Rt[0:3, 2]), self.sk(Tc[0:3, 2])))
+            #dw = dot(linalg.pinv(L), dw)
+            #Re = dot(mat(Tc[0:3, 0:3]).T, Rt)
+            #e  = array([0.5*(Re[2, 1] - Re[1, 2]), 0.5*(Re[0, 2] - Re[2, 0]), 0.5*(Re[1, 0] - Re[0, 1])])
+            #dw = dot(Tc[0:3, 0:3], e)
+            dx = array([dv[0], dv[1], dv[2], dw[0], dw[1], dw[2]])*0.5
+            dq = dot(linalg.pinv(J), dx)
+            q[0:6] = q[0:6] + dq.flatten()
+
+            Tc = self.fk(q[0:6])
+            error = Pt - Tc[0:3, 3]
+            count = count + 1
+        print('iterates ', count, 'times')
+        if count >= 10:
+            print('iterates more than 10 times')
+            return q_ans
+        return q
+
+    def robotControl(self, q, bPr, cVc, bRd):
+        bTe = self.fk(q)
+        bJe = self.dk(q)
+        bTc = dot(bTe, camera_ext)
+        eTr = Robot.MDH(0, -pi/2, rcm_d, pi/2)
+        bRr = bTr[0:3, 0:3]
+        rVc = dot(dot(bRr.T, bTc[0:3, 0:3]), cVc)
+
+        # RCM_constraint(bTe, bTc, bPrcm)
+        le = linalg.norm(bPr - bTe[0:3, 3])
+        lc = linalg.norm(bPr - bTc[0:3, 3])
+        vx = -rVc[0] * le / lc
+        vy = -rVc[1] * le / lc
+        vz = +rVc[2] * le / lc
+        wx = +vy / le
+        wy = -vx / le
+        
+        # RCM_feedback(bTe, bTr, bPrcm)
+        lerror = linalg.norm(bTe[0:3, 3] - bTr[0:3, 3])
+        aerror = linalg.norm(cross(bTe[0:3, 3] - bPr, bTr[0:3, 3] - bPr))
+        if abs(lerror) < 1e-5 or abs(aerror) < 1e-5:
+            derror = array([0.0, 0.0, 0.0])
+        else:
+            herror= linalg.norm(cross(bTe[0:3, 3] - bPr, bTr[0:3, 3] - bPr)) / lerror
+            derror = cross(cross(bTe[0:3, 3] - bPr, bTr[0:3, 3] - bPr), bTe[0:3, 3] - bTr[0:3, 3])
+            derror = derror / linalg.norm(derror) * herror
+        kk = 0.5*50
+        dv = dot(bRr.T, derror)
+        vx = vx - kk*dv[0]
+        vy = vy - kk*dv[1]
+        
+        # RIVP(bRo, bRr)
+        bRo = bRd
+        yy = bRo[0, 0]*bRr[0, 0] + bRo[1, 0]*bRr[1, 0] + bRo[0, 1]*bRr[0, 1] + bRo[1, 1]*bRr[1, 1]
+        xx = bRo[0, 0]*bRr[0, 1] + bRo[1, 0]*bRr[1, 1] - bRo[0, 1]*bRr[0, 0] - bRo[1, 1]*bRr[1, 0]
+        dz = math.atan2(yy, xx)
+        if abs(pi/2.0 - dz) < abs(-pi/2.0 - dz):
+            dz = +pi/2.0 - dz
+        else:
+            dz = -pi/2.0 - dz
+        wz = dz*25.0
+        
+        # robot control
+        rVe = array([vx, vy, vz, wx, wy, wz])
+        C = zeros((6, 6))
+        C[0:3, 0:3] = bRr[0:3, 0:3]
+        C[3:6, 3:6] = bRr[0:3, 0:3]
+        dq = dot(dot(linalg.pinv(bJe), C), rVe)
+        q[0:6] = q[0:6] + dq * dt
+        return q[0:6]
+
+    def draw(self, q, fig, show_frame=False):
+        scale = 0.01
+        plt.cla()
+        ax = Axes3D(fig)
+        ax.bar3d(-5*scale, -5*scale, -3*scale, 10*scale, 10*scale, 3*scale, color='gray')
+        T = array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        P = T[0:3, 3]
+        R = T[0:3, 0:3]
+        ax.quiver(-0.3, 0.3, 0, R[0, 0]*scale*5, R[1, 0]*scale*5, R[2, 0]*scale*5, length=0.1, normalize=True, color='r')
+        ax.quiver(-0.3, 0.3, 0, R[0, 1]*scale*5, R[1, 1]*scale*5, R[2, 1]*scale*5, length=0.1, normalize=True, color='g')
+        ax.quiver(-0.3, 0.3, 0, R[0, 2]*scale*5, R[1, 2]*scale*5, R[2, 2]*scale*5, length=0.1, normalize=True, color='b')
+        ax.text(-0.3 + R[0, 0]*scale*15, 0.3 + R[1, 0]*scale*15, R[2, 0]*scale*15, 'x')
+        ax.text(-0.3 + R[0, 1]*scale*15, 0.3 + R[1, 1]*scale*15, R[2, 1]*scale*15, 'y')
+        ax.text(-0.3 + R[0, 2]*scale*10, 0.3 + R[1, 2]*scale*10, R[2, 2]*scale*10, 'z')
+        for k in range(0, 6):
+            T = dot(T, self.MDH(self.A[k], self.ALPHA[k], self.D[k], q[k]));
+            Q = P
+            P = T[0:3, 3]
+            R = T[0:3, 0:3]
+            # draw line
+            ax.plot([Q[0], P[0]], [Q[1], P[1]], [Q[2], P[2]], linewidth=5, color='orange')
+            
+            # draw cylinder
+            n = 20;
+            u = linspace(0, 2*pi, n)
+            x = array([cos(u)*scale*3, cos(u)*scale*3])
+            y = array([sin(u)*scale*3, sin(u)*scale*3])
+            z = array([[-scale*3]*n, [+scale*3]*n])
+
+            for j in range(0, n):
+                xx0 = R[0, 0]*x[0][j] + R[0, 1]*y[0][j] + R[0, 2]*z[0][j] + P[0]
+                yy0 = R[1, 0]*x[0][j] + R[1, 1]*y[0][j] + R[1, 2]*z[0][j] + P[1]
+                zz0 = R[2, 0]*x[0][j] + R[2, 1]*y[0][j] + R[2, 2]*z[0][j] + P[2]
+
+                xx1 = R[0, 0]*x[1][j] + R[0, 1]*y[1][j] + R[0, 2]*z[1][j] + P[0]
+                yy1 = R[1, 0]*x[1][j] + R[1, 1]*y[1][j] + R[1, 2]*z[1][j] + P[1]
+                zz1 = R[2, 0]*x[1][j] + R[2, 1]*y[1][j] + R[2, 2]*z[1][j] + P[2]
+
+                x[0][j] = xx0
+                y[0][j] = yy0
+                z[0][j] = zz0
+
+                x[1][j] = xx1
+                y[1][j] = yy1
+                z[1][j] = zz1
+            ax.plot_surface(x, y, z, color='pink')
+            
+            # draw coordinate
+            if show_frame == True:
+                ax.quiver(P[0], P[1], P[2], R[0, 0]*scale*5, R[1, 0]*scale*5, R[2, 0]*scale*5, length=0.1, normalize=True, color='r')
+                ax.quiver(P[0], P[1], P[2], R[0, 1]*scale*5, R[1, 1]*scale*5, R[2, 1]*scale*5, length=0.1, normalize=True, color='g')
+                ax.quiver(P[0], P[1], P[2], R[0, 2]*scale*5, R[1, 2]*scale*5, R[2, 2]*scale*5, length=0.1, normalize=True, color='b')
+
+        #ax.set_xlabel('X (m)')
+        ax.set_xlim(-0.5, 0.5)
+        #ax.set_ylabel('Y (m)')
+        ax.set_ylim(-0.5, 0.5)
+        #ax.set_zlabel('Z (m)')
+        ax.set_zlim(-0.3, 0.7)
+        #ax.view_init(azim=135)
+        plt.axis('off')
+        return ax
